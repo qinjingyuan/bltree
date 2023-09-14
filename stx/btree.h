@@ -46,7 +46,8 @@
 #include <memory>
 #include <cstddef>
 #include <cassert>
-
+#include <chrono>
+#include <iostream>
 // *** Debugging Macros
 
 #ifdef BTREE_DEBUG
@@ -81,6 +82,9 @@
 
 /// STX - Some Template Extensions namespace
 namespace stx {
+
+size_t level_delay[5] = {0};
+
 
 /** Generates default traits for a B+ tree used as a set. It estimates leaf and
  * inner node sizes by assuming a cache line size of 256 bytes. */
@@ -141,7 +145,7 @@ public:
     /// find_upper() instead of binary_search, unless the node size is larger
     /// than this threshold. See notes at
     /// http://panthema.net/2013/0504-STX-B+Tree-Binary-vs-Linear-Search
-    static const size_t binsearch_threshold = 256;
+    static const size_t binsearch_threshold = 32;
 };
 
 /** @brief Basic class implementing a base B+ tree data structure in memory.
@@ -318,6 +322,13 @@ private:
         {
             return (node::slotuse < mininnerslots);
         }
+
+        inline key_type minkey() const {
+            return slotkey[0];
+        }
+        inline key_type maxkey() const {
+            return slotkey[node::slotuse-1];
+        }
     };
 
     /// Extended structure of a leaf node in memory. Contains pairs of keys and
@@ -385,6 +396,14 @@ private:
             BTREE_ASSERT(used_as_set == true);
             BTREE_ASSERT(slot < node::slotuse);
             slotkey[slot] = key;
+        }
+
+
+        inline key_type minkey() const {
+            return slotkey[0];
+        }
+        inline key_type maxkey() const {
+            return slotkey[node::slotuse-1];
         }
     };
 
@@ -1633,7 +1652,7 @@ private:
     template <typename node_type>
     inline int find_lower(const node_type* n, const key_type& key) const
     {
-        if (0 && sizeof(n->slotkey) > traits::binsearch_threshold)
+        if (sizeof(n->slotkey) > traits::binsearch_threshold)
         {
             if (n->slotuse == 0) return 0;
 
@@ -1672,6 +1691,84 @@ private:
             return lo;
         }
     }
+
+
+
+
+
+    template <typename node_type>
+    inline int find_lower_line(const node_type* n, const key_type& key, key_type& min_key, key_type& max_key,bool is_max_min) const
+    {
+
+        if (n->slotuse == 0) return 0;
+        int lo = 0, hi = n->slotuse;
+        // int mid = (hi+lo) >> 1;
+        if(!is_max_min){
+            min_key = n->slotkey[0];
+            max_key = n->slotkey[n->slotuse-1];
+        }
+        if(key <= min_key) return 0;
+        if(key > max_key ) return n->slotuse;
+        // auto currentTime1 = std::chrono::high_resolution_clock::now();
+        int pre_target = (((key - min_key)) * (hi)) / ((max_key - min_key));
+
+        int point = pre_target;
+
+        // auto currentTime2 = std::chrono::high_resolution_clock::now();
+        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        // level_delay[3] +=  (nanoseconds2 - nanoseconds1);
+        // level_delay[4]++;
+        // __builtin_prefetch(&(n->slotkey[point])+64, 0, 2);
+        // __builtin_prefetch(&(n->slotkey[point])-64, 0, 2);
+        // if(pre_target > 0 && n->isleafnode()){return 0;}
+
+        if(n->slotkey[point] < key){
+            // if(n->isleafnode()){return 0;}
+            // __builtin_prefetch(&(n->slotkey[point])+64, 0, 2);
+            // __builtin_prefetch(&(n->slotkey[point])+128, 0, 2);
+            while (point < hi && key_less(n->slotkey[point], key)) {
+                ++point;
+                
+            }
+        }else{
+            // if(n->isleafnode()){return 0;}
+            // __builtin_prefetch(&(n->slotkey[point])-64, 0, 2);
+            // __builtin_prefetch(&(n->slotkey[point])-128, 0, 2);
+            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
+                --point;
+            }
+            point++;
+        }
+
+        if(!n->isleafnode()){
+            int gap = point-pre_target > 0 ? point-pre_target : pre_target-point;
+            level_delay[3] += gap;
+            level_delay[4] ++;
+            // std::cout << key << " " << point-pre_target << std::endl;
+            // std::cout 
+            // << " " << n->slotkey[lo] 
+            // << " " << n->slotkey[(lo+mid)>>1] 
+            // << " " << n->slotkey[mid] 
+            // << " " << n->slotkey[(mid+hi)>>1] 
+            // << " " << n->slotkey[hi-1] 
+            // << std::endl;
+        }
+        if(point > 0 && point < n->slotuse) {
+            min_key = n->slotkey[point-1];
+            max_key = n->slotkey[point];
+            is_max_min = true;
+        }else{
+            is_max_min = false;
+        }
+
+        return point;
+        
+
+    }
+
+
+
 
     /// Searches for the first key in the node n greater than key. Uses binary
     /// search with an optional linear self-verification. This is a template
@@ -1792,6 +1889,58 @@ public:
         int slot = find_lower(leaf, key);
         return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
                ? iterator(leaf, slot) : end();
+    }
+
+
+    int btree_level;
+    iterator find_line(const key_type& key)
+    {
+        btree_level = 0;
+        node* n = m_root;
+        if (!n) return end();
+        key_type min_key ;
+        key_type max_key ;
+        if(n->isleafnode()){
+            const leaf_node* innert = static_cast<const leaf_node*>(n);
+            min_key = innert->minkey();
+            max_key = innert->maxkey();
+        }else{
+            const inner_node* innert = static_cast<const inner_node*>(n);
+            min_key = innert->minkey();
+            max_key = innert->maxkey();
+        }
+
+        bool is_max_min = true;
+
+        while (!n->isleafnode())
+        {
+            const inner_node* inner = static_cast<const inner_node*>(n);
+
+            auto currentTime1 = std::chrono::high_resolution_clock::now();
+            int slot = find_lower_line(inner, key, min_key, max_key, is_max_min);
+            n = inner->childid[slot];
+            auto currentTime2 = std::chrono::high_resolution_clock::now();
+            auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+            auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+            level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
+            btree_level++;
+        }
+
+        auto currentTime1 = std::chrono::high_resolution_clock::now();
+
+        leaf_node* leaf = static_cast<leaf_node*>(n);
+        int slot = find_lower_line(leaf, key, min_key, max_key, is_max_min);
+        bool flag = slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]);
+
+        auto currentTime2 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
+
+        return flag ? iterator(leaf, slot) : end() ;
+
+        // return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
+        //        ? iterator(leaf, slot) : end();
     }
 
     /// Tries to locate a key in the B+ tree and returns an constant iterator
