@@ -1722,14 +1722,14 @@ private:
         // __builtin_prefetch(&(n->slotkey[point])+64, 0, 2);
         // __builtin_prefetch(&(n->slotkey[point])-64, 0, 2);
         // if(pre_target > 0 && n->isleafnode()){return 0;}
-
+        
+        // int strid=1;
         if(n->slotkey[point] < key){
             // if(n->isleafnode()){return 0;}
             // __builtin_prefetch(&(n->slotkey[point])+64, 0, 2);
             // __builtin_prefetch(&(n->slotkey[point])+128, 0, 2);
             while (point < hi && key_less(n->slotkey[point], key)) {
                 ++point;
-                
             }
         }else{
             // if(n->isleafnode()){return 0;}
@@ -1740,6 +1740,9 @@ private:
             }
             point++;
         }
+        // if(  std::abs(point-pre_target) > 8 ){
+        //     std::cout << "erroe rate is " << std::abs(point-pre_target) << std::endl;
+        // }
 
         if(!n->isleafnode()){
             int gap = point-pre_target > 0 ? point-pre_target : pre_target-point;
@@ -1754,6 +1757,7 @@ private:
             // << " " << n->slotkey[hi-1] 
             // << std::endl;
         }
+
         if(point > 0 && point < n->slotuse) {
             min_key = n->slotkey[point-1];
             max_key = n->slotkey[point];
@@ -1916,31 +1920,31 @@ public:
         {
             const inner_node* inner = static_cast<const inner_node*>(n);
 
-            auto currentTime1 = std::chrono::high_resolution_clock::now();
+            // auto currentTime1 = std::chrono::high_resolution_clock::now();
             int slot = find_lower_line(inner, key, min_key, max_key, is_max_min);
+            // auto currentTime2 = std::chrono::high_resolution_clock::now();
             n = inner->childid[slot];
-            auto currentTime2 = std::chrono::high_resolution_clock::now();
-            auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-            auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-            level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
+            // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+            // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+            // level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
             btree_level++;
         }
 
-        auto currentTime1 = std::chrono::high_resolution_clock::now();
-
         leaf_node* leaf = static_cast<leaf_node*>(n);
+        // auto currentTime1 = std::chrono::high_resolution_clock::now();
+
         int slot = find_lower_line(leaf, key, min_key, max_key, is_max_min);
-        bool flag = slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]);
+        // auto currentTime2 = std::chrono::high_resolution_clock::now();
+        // bool flag = slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]);
 
-        auto currentTime2 = std::chrono::high_resolution_clock::now();
-        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
+        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        // level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
 
-        return flag ? iterator(leaf, slot) : end() ;
+        // return flag ? iterator(leaf, slot) : end() ;
 
-        // return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
-        //        ? iterator(leaf, slot) : end();
+        return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
+               ? iterator(leaf, slot) : end();
     }
 
     /// Tries to locate a key in the B+ tree and returns an constant iterator
@@ -2359,6 +2363,7 @@ private:
 
                 if (inner->isfull())
                 {
+                    // 返回的是做节点的key，和右节点的地址
                     split_inner_node(inner, splitkey, splitnode, slot);
 
                     BTREE_PRINT("btree::insert_descend done split_inner: putslot: " << slot << " putkey: " << newkey << " upkey: " << *splitkey);
@@ -2413,7 +2418,7 @@ private:
                                    inner->slotkey + inner->slotuse + 1);
                 std::copy_backward(inner->childid + slot, inner->childid + inner->slotuse + 1,
                                    inner->childid + inner->slotuse + 2);
-
+                // 右移后，左节点更新key，右节点更新地址
                 inner->slotkey[slot] = newkey;
                 inner->childid[slot + 1] = newchild;
                 inner->slotuse++;
@@ -2532,7 +2537,7 @@ private:
                   newinner->slotkey);
         std::copy(inner->childid + mid + 1, inner->childid + inner->slotuse + 1,
                   newinner->childid);
-
+        // 剩余mid+1个元素，slotuse为mid，舍去最后一个
         inner->slotuse = mid;
 
         *_newkey = inner->slotkey[mid];
