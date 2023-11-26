@@ -63,7 +63,7 @@ CMAKE_BINARY_DIR = /home/qinjingyuan/index_opt/cmp_lab/build
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/btree_prefetch.dir/all
+all: CMakeFiles/btree_opt.dir/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -71,34 +71,34 @@ preinstall:
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/btree_prefetch.dir/clean
+clean: CMakeFiles/btree_opt.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/btree_prefetch.dir
+# Target rules for target CMakeFiles/btree_opt.dir
 
 # All Build rule for target.
-CMakeFiles/btree_prefetch.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_prefetch.dir/build.make CMakeFiles/btree_prefetch.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_prefetch.dir/build.make CMakeFiles/btree_prefetch.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/qinjingyuan/index_opt/cmp_lab/build/CMakeFiles --progress-num=1,2 "Built target btree_prefetch"
-.PHONY : CMakeFiles/btree_prefetch.dir/all
+CMakeFiles/btree_opt.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_opt.dir/build.make CMakeFiles/btree_opt.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_opt.dir/build.make CMakeFiles/btree_opt.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/qinjingyuan/index_opt/cmp_lab/build/CMakeFiles --progress-num=1,2 "Built target btree_opt"
+.PHONY : CMakeFiles/btree_opt.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/btree_prefetch.dir/rule: cmake_check_build_system
+CMakeFiles/btree_opt.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/qinjingyuan/index_opt/cmp_lab/build/CMakeFiles 2
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/btree_prefetch.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/btree_opt.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/qinjingyuan/index_opt/cmp_lab/build/CMakeFiles 0
-.PHONY : CMakeFiles/btree_prefetch.dir/rule
+.PHONY : CMakeFiles/btree_opt.dir/rule
 
 # Convenience name for target.
-btree_prefetch: CMakeFiles/btree_prefetch.dir/rule
-.PHONY : btree_prefetch
+btree_opt: CMakeFiles/btree_opt.dir/rule
+.PHONY : btree_opt
 
 # clean rule for target.
-CMakeFiles/btree_prefetch.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_prefetch.dir/build.make CMakeFiles/btree_prefetch.dir/clean
-.PHONY : CMakeFiles/btree_prefetch.dir/clean
+CMakeFiles/btree_opt.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_opt.dir/build.make CMakeFiles/btree_opt.dir/clean
+.PHONY : CMakeFiles/btree_opt.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

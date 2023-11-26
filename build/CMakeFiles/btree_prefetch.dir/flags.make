@@ -6,5 +6,5 @@ CXX_DEFINES = -DNDEBUG -DSEP
 
 CXX_INCLUDES = -I/home/qinjingyuan/index_opt/cmp_lab/. -I/home/qinjingyuan/index_opt/cmp_lab/lipp/src/core -I/home/qinjingyuan/index_opt/cmp_lab/DyTIS -I/home/qinjingyuan/index_opt/cmp_lab/DyTIS/benchmark
 
-CXX_FLAGS = -O1 -march=native -Wall -Wextra   -ggdb -lrt -lpthread -lm -flto -fno-stack-protector -Wno-unknown-pragmas -rdynamic -O3 -Wall -Wextra -march=native -Wall -Wextra -Wshadow -std=gnu++17
+CXX_FLAGS = -O1 -march=native -Wall -Wextra   -ggdb -lrt -lpthread -lm -flto -fno-stack-protector -Wno-unknown-pragmas -rdynamic -O3 -g -Wall -Wextra -march=native -Wall -Wextra -Wshadow -std=gnu++17
 

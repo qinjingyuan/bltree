@@ -117,24 +117,24 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named btree_prefetch
+# Target rules for targets named btree_opt
 
 # Build rule for target.
-btree_prefetch: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 btree_prefetch
-.PHONY : btree_prefetch
+btree_opt: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 btree_opt
+.PHONY : btree_opt
 
 # fast build rule for target.
-btree_prefetch/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_prefetch.dir/build.make CMakeFiles/btree_prefetch.dir/build
-.PHONY : btree_prefetch/fast
+btree_opt/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_opt.dir/build.make CMakeFiles/btree_opt.dir/build
+.PHONY : btree_opt/fast
 
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
 # target to build an object file
 src/main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_prefetch.dir/build.make CMakeFiles/btree_prefetch.dir/src/main.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_opt.dir/build.make CMakeFiles/btree_opt.dir/src/main.cpp.o
 .PHONY : src/main.cpp.o
 
 src/main.i: src/main.cpp.i
@@ -142,7 +142,7 @@ src/main.i: src/main.cpp.i
 
 # target to preprocess a source file
 src/main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_prefetch.dir/build.make CMakeFiles/btree_prefetch.dir/src/main.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_opt.dir/build.make CMakeFiles/btree_opt.dir/src/main.cpp.i
 .PHONY : src/main.cpp.i
 
 src/main.s: src/main.cpp.s
@@ -150,7 +150,7 @@ src/main.s: src/main.cpp.s
 
 # target to generate assembly for a file
 src/main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_prefetch.dir/build.make CMakeFiles/btree_prefetch.dir/src/main.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/btree_opt.dir/build.make CMakeFiles/btree_opt.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
 # Help Target
@@ -161,7 +161,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... btree_prefetch"
+	@echo "... btree_opt"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"

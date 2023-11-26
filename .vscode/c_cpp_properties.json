@@ -3,13 +3,17 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**","lipp/src/core"
+                "${workspaceFolder}/**"
             ],
-            "defines": [],
+            "defines": [
+                "SCENE1",
+                "SCENE2"
+            ],
             "compilerPath": "/usr/bin/clang",
             "cStandard": "c17",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "linux-clang-x64"
+            "cppStandard": "c++14",
+            "intelliSenseMode": "linux-clang-x64",
+            "compileCommands": "${workspaceFolder}/compile_commands.json"
         }
     ],
     "version": 4

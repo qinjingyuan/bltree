@@ -40,6 +40,7 @@
 // *** Required Headers from the STL
 
 #include <algorithm>
+#include <cstdint>
 #include <functional>
 #include <istream>
 #include <ostream>
@@ -48,6 +49,7 @@
 #include <cassert>
 #include <chrono>
 #include <iostream>
+#include<cmath>
 // *** Debugging Macros
 
 #ifdef BTREE_DEBUG
@@ -85,6 +87,7 @@ namespace stx {
 
 size_t level_delay[5] = {0};
 
+enum modelType  {LINE=0,BINOMIAL,GENERAL};
 
 /** Generates default traits for a B+ tree used as a set. It estimates leaf and
  * inner node sizes by assuming a cache line size of 256 bytes. */
@@ -269,6 +272,17 @@ private:
         /// Number of key slotuse use, so number of valid children or data
         /// pointers
         unsigned short slotuse;
+
+        // Polynomial variable
+        uint16_t fa = 0;
+        uint32_t ffa = 0;
+        uint16_t fb = 0;
+        uint16_t fc = 0;
+        uint16_t fd = 0;
+        modelType model_type = modelType::GENERAL;
+        uint16_t gap_ratio = 0;
+        uint16_t insert_count = 0;
+        uint16_t delete_count = 0;
 
         /// Delayed initialisation of constructed node
         inline node(const unsigned short l, const unsigned short s = 0)
@@ -1649,11 +1663,53 @@ private:
     /// binary search with an optional linear self-verification. This is a
     /// template function, because the slotkey array is located at different
     /// places in leaf_node and inner_node.
+    // template <typename node_type>
+    // inline int find_lower(const node_type* n, const key_type& key) const
+    // {
+
+    //     if(n->model_type == modelType::GENERAL){
+    //         if (n->slotuse == 0) return 0;
+
+    //         int lo = 0, hi = n->slotuse;
+
+    //         while (lo < hi)
+    //         {
+    //             int mid = (lo + hi) >> 1;
+
+    //             if (key_lessequal(key, n->slotkey[mid])) {
+    //                 hi = mid;     // key <= mid
+    //             }
+    //             else {
+    //                 lo = mid + 1; // key > mid
+    //             }
+    //         }
+
+    //         BTREE_PRINT("btree::find_lower: on " << n << " key " << key << " -> " << lo << " / " << hi);
+
+    //         // verify result using simple linear search
+    //         if (selfverify)
+    //         {
+    //             int i = 0;
+    //             while (i < n->slotuse && key_less(n->slotkey[i], key)) ++i;
+
+    //             BTREE_PRINT("btree::find_lower: testfind: " << i);
+    //             BTREE_ASSERT(i == lo);
+    //         }
+
+    //         return lo;
+
+    //     }
+
+    // }
+
+
+
+
+
     template <typename node_type>
-    inline int find_lower(const node_type* n, const key_type& key) const
+    inline int find_lower(const node_type* n, const key_type& key, key_type& min_key, key_type& max_key,bool is_max_min) const
     {
-        if (sizeof(n->slotkey) > traits::binsearch_threshold)
-        {
+        if(n->model_type == modelType::GENERAL){
             if (n->slotuse == 0) return 0;
 
             int lo = 0, hi = n->slotuse;
@@ -1669,6 +1725,7 @@ private:
                     lo = mid + 1; // key > mid
                 }
             }
+            
 
             BTREE_PRINT("btree::find_lower: on " << n << " key " << key << " -> " << lo << " / " << hi);
 
@@ -1683,90 +1740,55 @@ private:
             }
 
             return lo;
+
         }
-        else // for nodes <= binsearch_threshold do linear search.
-        {
-            int lo = 0;
-            while (lo < n->slotuse && key_less(n->slotkey[lo], key)) ++lo;
-            return lo;
-        }
-    }
-
-
-
-
-
-    template <typename node_type>
-    inline int find_lower_line(const node_type* n, const key_type& key, key_type& min_key, key_type& max_key,bool is_max_min) const
-    {
-
-        if (n->slotuse == 0) return 0;
-        int lo = 0, hi = n->slotuse;
-        // int mid = (hi+lo) >> 1;
-        if(!is_max_min){
-            min_key = n->slotkey[0];
-            max_key = n->slotkey[n->slotuse-1];
-        }
-        if(key <= min_key) return 0;
-        if(key > max_key ) return n->slotuse;
-        // auto currentTime1 = std::chrono::high_resolution_clock::now();
-        int pre_target = (((key - min_key)) * (hi)) / ((max_key - min_key));
-
-        int point = pre_target;
-
-        // auto currentTime2 = std::chrono::high_resolution_clock::now();
-        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        // level_delay[3] +=  (nanoseconds2 - nanoseconds1);
-        // level_delay[4]++;
-        // __builtin_prefetch(&(n->slotkey[point])+64, 0, 2);
-        // __builtin_prefetch(&(n->slotkey[point])-64, 0, 2);
-        // if(pre_target > 0 && n->isleafnode()){return 0;}
-        
-        // int strid=1;
-        if(n->slotkey[point] < key){
-            // if(n->isleafnode()){return 0;}
-            // __builtin_prefetch(&(n->slotkey[point])+64, 0, 2);
-            // __builtin_prefetch(&(n->slotkey[point])+128, 0, 2);
-            while (point < hi && key_less(n->slotkey[point], key)) {
-                ++point;
+        else if(n->model_type == modelType::LINE){
+            // std::cout << "line" << std::endl;
+            if (n->slotuse == 0) return 0;
+            int lo = 0, hi = n->slotuse;
+            // int mid = (hi+lo) >> 1;
+            if(!is_max_min){
+                min_key = n->slotkey[0];
+                max_key = n->slotkey[n->slotuse-1];
             }
-        }else{
-            // if(n->isleafnode()){return 0;}
-            // __builtin_prefetch(&(n->slotkey[point])-64, 0, 2);
-            // __builtin_prefetch(&(n->slotkey[point])-128, 0, 2);
-            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                --point;
+            if(key <= min_key) return 0;
+            if(key > max_key ) return n->slotuse;
+            // auto currentTime1 = std::chrono::high_resolution_clock::now();
+            int pre_target = (((key - min_key)) * (hi)) / ((max_key - min_key));
+
+            int point = pre_target;
+            if(n->slotkey[point] < key){
+
+                while (point < hi && key_less(n->slotkey[point], key)) {
+                    ++point;
+                }
+            }else{
+
+                while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
+                    --point;
+                }
+                point++;
             }
-            point++;
-        }
-        // if(  std::abs(point-pre_target) > 8 ){
-        //     std::cout << "erroe rate is " << std::abs(point-pre_target) << std::endl;
-        // }
 
-        if(!n->isleafnode()){
-            int gap = point-pre_target > 0 ? point-pre_target : pre_target-point;
-            level_delay[3] += gap;
-            level_delay[4] ++;
-            // std::cout << key << " " << point-pre_target << std::endl;
-            // std::cout 
-            // << " " << n->slotkey[lo] 
-            // << " " << n->slotkey[(lo+mid)>>1] 
-            // << " " << n->slotkey[mid] 
-            // << " " << n->slotkey[(mid+hi)>>1] 
-            // << " " << n->slotkey[hi-1] 
-            // << std::endl;
-        }
 
-        if(point > 0 && point < n->slotuse) {
-            min_key = n->slotkey[point-1];
-            max_key = n->slotkey[point];
-            is_max_min = true;
-        }else{
-            is_max_min = false;
+            if(!n->isleafnode()){
+                int gap = point-pre_target > 0 ? point-pre_target : pre_target-point;
+                level_delay[3] += gap;
+                level_delay[4] ++;
+            }
+
+            if(point > 0 && point < n->slotuse) {
+                min_key = n->slotkey[point-1];
+                max_key = n->slotkey[point];
+                is_max_min = true;
+            }else{
+                is_max_min = false;
+            }
+
+            return point;
+
         }
 
-        return point;
 
 
     }
@@ -1875,29 +1897,29 @@ public:
 
     /// Tries to locate a key in the B+ tree and returns an iterator to the
     /// key/data slot if found. If unsuccessful it returns end().
-    iterator find(const key_type& key)
-    {
-        node* n = m_root;
-        if (!n) return end();
+    // iterator find(const key_type& key)
+    // {
+    //     node* n = m_root;
+    //     if (!n) return end();
 
-        while (!n->isleafnode())
-        {
-            const inner_node* inner = static_cast<const inner_node*>(n);
-            int slot = find_lower(inner, key);
+    //     while (!n->isleafnode())
+    //     {
+    //         const inner_node* inner = static_cast<const inner_node*>(n);
+    //         int slot = find_lower(inner, key);
 
-            n = inner->childid[slot];
-        }
+    //         n = inner->childid[slot];
+    //     }
 
-        leaf_node* leaf = static_cast<leaf_node*>(n);
+    //     leaf_node* leaf = static_cast<leaf_node*>(n);
 
-        int slot = find_lower(leaf, key);
-        return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
-               ? iterator(leaf, slot) : end();
-    }
+    //     int slot = find_lower(leaf, key);
+    //     return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
+    //            ? iterator(leaf, slot) : end();
+    // }
 
 
     int btree_level;
-    iterator find_line(const key_type& key)
+    iterator find(const key_type& key)
     {
         btree_level = 0;
         node* n = m_root;
@@ -1921,7 +1943,7 @@ public:
             const inner_node* inner = static_cast<const inner_node*>(n);
 
             // auto currentTime1 = std::chrono::high_resolution_clock::now();
-            int slot = find_lower_line(inner, key, min_key, max_key, is_max_min);
+            int slot = find_lower(inner, key, min_key, max_key, is_max_min);
             // auto currentTime2 = std::chrono::high_resolution_clock::now();
             n = inner->childid[slot];
             // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
@@ -1933,7 +1955,7 @@ public:
         leaf_node* leaf = static_cast<leaf_node*>(n);
         // auto currentTime1 = std::chrono::high_resolution_clock::now();
 
-        int slot = find_lower_line(leaf, key, min_key, max_key, is_max_min);
+        int slot = find_lower(leaf, key, min_key, max_key, is_max_min);
         // auto currentTime2 = std::chrono::high_resolution_clock::now();
         // bool flag = slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]);
 
@@ -2320,6 +2342,7 @@ private:
         // increment itemcount if the item was inserted
         if (r.second) ++m_stats.itemcount;
 
+
 #ifdef BTREE_DEBUG
         if (debug) print(std::cout);
 #endif
@@ -2331,6 +2354,156 @@ private:
 
         return r;
     }
+
+
+    // generate duoxiangshi model
+    template<typename T>
+    bool generate_func_model(T* n){
+        // sure s1 != 0, define 5 site for compute k.
+        if(n->slotuse < 16) {
+            n->model_type = modelType::GENERAL;
+            return true;
+        }
+        // array sites
+        int s4 = n->slotuse - 1;
+        int s2 = s4 >> 1;
+        int s1 = s2 >> 1;
+        int s3 = s2 + s1;
+        int s0 = 0;
+
+        // 计算4段数据的斜率
+        T* leaf = n;
+        // if(n->isleafnode()){
+        //     (leaf_node*)leaf = static_cast<leaf_node*>(n);
+        //     generate_func_model_helper(static_cast<leaf_node*>(n));
+        // }else{
+        //     (inner_node*)leaf = static_cast<inner_node*>(n);
+        // }
+
+        float k0 = ((leaf->slotkey[s1] - leaf->slotkey[s0]) << 10 ) / (s1-s0);
+        float k1 = ((leaf->slotkey[s2] - leaf->slotkey[s1]) << 10 ) / (s2-s1);
+        float k2 = ((leaf->slotkey[s3] - leaf->slotkey[s2]) << 10 ) / (s3-s2);
+        float k3 = ((leaf->slotkey[s4] - leaf->slotkey[s3]) << 10 ) / (s4-s3);
+        double fa = (leaf->slotkey[s4] - leaf->slotkey[0]) /  (s4-0);
+        double left_kk  = k1-k0>0 ? k1/k0-1 : -k0/k1+1;
+        double mid_kk   = k2-k1>0 ? k2/k1-1 : -k1/k2+1;
+        double right_kk = k3-k2>0 ? k3/k2-1 : -k2/k3+1;
+        // 二项式情况,
+        double threshold = 0.4;
+        double max_threshold = 10;
+        // std::cout << left_kk<< " " << mid_kk << " "<< right_kk << " " << fa << std::endl;
+        // std::cout << fabs(left_kk)<< " " << fabs(mid_kk) << " "<< fabs(right_kk) << " " << std::endl;
+
+        if(fa > 10000 || fa < 1 || fabs(left_kk) > max_threshold ||
+            fabs(right_kk) > max_threshold || fabs(mid_kk) > max_threshold ){
+            leaf->model_type = modelType::GENERAL;
+
+        }
+        else if(fabs(left_kk)<=threshold && fabs(right_kk)<=threshold && fabs(mid_kk) <= threshold){
+            // 线性建模 000
+            // std::cout << " line "<< left_kk<< " " << mid_kk << " "<< right_kk << " " << std::endl;
+            leaf->model_type = modelType::LINE;
+            double fa =  (leaf->slotkey[s4] - leaf->slotkey[0]) / (s4-0);
+            double fb = leaf->slotkey[0];
+            double ffa = (1<<20) / fa;
+            leaf->fa = static_cast<uint16_t>(fa);
+            leaf->fb = static_cast<uint16_t>(fb);
+            leaf->ffa = static_cast<uint32_t>(ffa);
+
+        }
+        // else if(left_kk > threshold && right_kk > threshold && mid_kk > threshold){
+        //     // 二项式凹函数建模 +++
+        //     leaf->model_type = modelType::BINOMIAL;
+        //     double fa = ;
+        //     double ffa = (1<<20) / fa;
+        //     double fb = ;
+        //     double fc = ;
+        //     double ffc = (1<20) / fc;
+        //     double fd = ;
+        // }
+
+        leaf->insert_count = 0;
+        leaf->delete_count = 0;
+        return true;
+
+
+
+        
+
+
+
+
+    }
+
+
+    // generate duoxiangshi model
+    bool generate_leaf_model(leaf_node* n){
+        // sure s1 != 0, define 5 site for compute k.
+        if(n->slotuse < 16) {
+            n->model_type = modelType::GENERAL;
+            return true;
+        }
+        // array sites
+        int s4 = n->slotuse - 1;
+        int s2 = s4 >> 1;
+        int s1 = s2 >> 1;
+        int s3 = s2 + s1;
+        int s0 = 0;
+
+        // 计算4段数据的斜率
+        node* leaf = n;
+        float k0 = ((leaf->slotkey[s1] - leaf->slotkey[s0]) << 10 ) / (s1-s0);
+        float k1 = ((leaf->slotkey[s2] - leaf->slotkey[s1]) << 10 ) / (s2-s1);
+        float k2 = ((leaf->slotkey[s3] - leaf->slotkey[s2]) << 10 ) / (s3-s2);
+        float k3 = ((leaf->slotkey[s4] - leaf->slotkey[s3]) << 10 ) / (s4-s3);
+        double fa = (s4-0) / (leaf->slotkey[s4] - leaf->slotkey[0]);
+        double left_kk  = k1-k0>0 ? k1/k0-1 : -k0/k1+1;
+        double mid_kk   = k2-k1>0 ? k2/k1-1 : -k1/k2+1;
+        double right_kk = k3-k2>0 ? k3/k2-1 : -k2/k3+1;
+        // 二项式情况,
+        double threshold = 0.2;
+        double max_threshold = 3;
+
+        if(fa > 10000 || fa < 1 || fabs(left_kk) > max_threshold ||
+            fabs(right_kk) > max_threshold || fabs(mid_kk) > max_threshold ){
+            leaf->model_type = modelType::GENERAL;
+
+        }
+        else if(fabs(left_kk)<=threshold && fabs(right_kk)<=threshold && fabs(mid_kk) <= threshold){
+            // 线性建模 000
+            leaf->model_type = modelType::LINE;
+            double fa =  (leaf->slotkey[s4] - leaf->slotkey[0]) / (s4-0);
+            double fb = leaf->slotkey[0];
+            double ffa = (1<<20) / fa;
+            leaf->fa = static_cast<uint16_t>(fa);
+            leaf->fb = static_cast<uint16_t>(fb);
+            leaf->ffa = static_cast<uint32_t>(ffa);
+
+        }
+        // else if(left_kk > threshold && right_kk > threshold && mid_kk > threshold){
+        //     // 二项式凹函数建模 +++
+        //     leaf->model_type = modelType::BINOMIAL;
+        //     double fa = ;
+        //     double ffa = (1<<20) / fa;
+        //     double fb = ;
+        //     double fc = ;
+        //     double ffc = (1<20) / fc;
+        //     double fd = ;
+        // }
+
+        leaf->insert_count = 0;
+        leaf->delete_count = 0;
+        return true;
+
+
+
+        
+
+
+
+
+    }
+
 
     /**
      * @brief Insert an item into the B+ tree.
@@ -2350,7 +2523,7 @@ private:
             key_type newkey = key_type();
             node* newchild = NULL;
 
-            int slot = find_lower(inner, key);
+            int slot = find_lower(inner, key, inner->slotkey[0], inner->slotkey[0],false);
 
             BTREE_PRINT("btree::insert_descend into " << inner->childid[slot]);
 
@@ -2365,6 +2538,8 @@ private:
                 {
                     // 返回的是做节点的key，和右节点的地址
                     split_inner_node(inner, splitkey, splitnode, slot);
+                    generate_func_model(inner);
+                    generate_func_model(static_cast<inner_node*>(*splitnode));
 
                     BTREE_PRINT("btree::insert_descend done split_inner: putslot: " << slot << " putkey: " << newkey << " upkey: " << *splitkey);
 
@@ -2410,6 +2585,13 @@ private:
                         BTREE_PRINT("btree::insert_descend switching to splitted node " << inner << " slot " << slot);
                     }
                 }
+                else{
+
+                    if(inner->insert_count > 20 || inner->delete_count > 20){
+                        generate_func_model(inner);
+                    }
+                    inner->insert_count++;
+                }
 
                 // move items and put pointer to child node into correct slot
                 BTREE_ASSERT(slot >= 0 && slot <= inner->slotuse);
@@ -2430,7 +2612,7 @@ private:
         {
             leaf_node* leaf = static_cast<leaf_node*>(n);
 
-            int slot = find_lower(leaf, key);
+            int slot = find_lower(leaf, key,leaf->slotkey[0],leaf->slotkey[0],false);
 
             if (!allow_duplicates && slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot])) {
                 return std::pair<iterator, bool>(iterator(leaf, slot), false);
@@ -2439,6 +2621,9 @@ private:
             if (leaf->isfull())
             {
                 split_leaf_node(leaf, splitkey, splitnode);
+                generate_func_model(leaf);
+                generate_func_model(static_cast<leaf_node*>(*splitnode));
+
 
                 // check if insert slot is in the split sibling node
                 if (slot >= leaf->slotuse)
@@ -2446,6 +2631,11 @@ private:
                     slot -= leaf->slotuse;
                     leaf = static_cast<leaf_node*>(*splitnode);
                 }
+            }else{
+                if(leaf->insert_count > 20 || leaf->delete_count > 20){
+                    generate_func_model(leaf);
+                }
+                leaf->insert_count++;
             }
 
             // move items and put data item into correct data slot
@@ -2552,6 +2742,7 @@ public:
     template <typename Iterator>
     void bulk_load(Iterator ibegin, Iterator iend)
     {
+        std::cout << "new bulk load" << std::endl;
         BTREE_ASSERT(empty());
 
         m_stats.itemcount = iend - ibegin;
@@ -2584,6 +2775,7 @@ public:
             m_tailleaf = leaf;
 
             num_items -= leaf->slotuse;
+            generate_func_model(leaf);
         }
 
         BTREE_ASSERT(it == iend && num_items == 0);
@@ -2630,6 +2822,7 @@ public:
 
             leaf = leaf->nextleaf;
             num_leaves -= n->slotuse + 1;
+            generate_func_model(n);
         }
 
         BTREE_ASSERT(leaf == NULL && num_leaves == 0);
