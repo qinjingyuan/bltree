@@ -36,7 +36,7 @@
  * Contains the specialized B+ tree template class btree_multimap
  */
 
-#include <stx/btree.h>
+#include <stx++/btree.h>
 
 namespace stx {
 
@@ -346,7 +346,7 @@ public:
 
     iterator find_line(const key_type& key)
     {
-        return tree.find_line(key);
+        return tree.find(key);
     }
 
     /// Tries to locate a key in the B+ tree and returns an constant iterator
