@@ -544,12 +544,6 @@ public:
         return tree.bulk_load_x(first, last);
     }
 
-    template <typename Iterator>
-    inline void bulk_load_l(Iterator first, Iterator last)
-    {
-        return tree.bulk_load_l(first, last);
-    }
-
 public:
     // *** Public Erase Functions
 

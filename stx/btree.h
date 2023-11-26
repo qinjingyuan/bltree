@@ -92,6 +92,7 @@
 namespace stx {
 
 size_t level_delay[5] = {0};
+size_t level_delay_count[5] = {0};
 size_t gaps[5] = {0};
 size_t gaps_count[5] = {0};
 size_t data_distribution_count[10] = {0};
@@ -1736,8 +1737,14 @@ private:
     template <typename node_type>
     inline int find_lower(const node_type* n, const key_type& key) const
     {
-        if (sizeof(n->slotkey) > traits::binsearch_threshold)
+#ifdef LEVEL_COUNT_TIME
+        auto currentTime1 = std::chrono::high_resolution_clock::now();
+#endif
+        // if (sizeof(n->slotkey) > traits::binsearch_threshold)
+        if (n->slotuse > 32)
         {
+            // std::cout << "zou le bingary \n";
+            // std::cout << traits::binsearch_threshold <<"zou le bingary \n";
             if (n->slotuse == 0) return 0;
 
             int lo = 0, hi = n->slotuse;
@@ -1768,15 +1775,32 @@ private:
                 BTREE_PRINT("btree::find_lower: testfind: " << i);
                 BTREE_ASSERT(i == lo);
             }
-
+#ifdef LEVEL_COUNT_TIME
+        auto currentTime2 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
+#endif
+       
             return lo;
         }
         else // for nodes <= binsearch_threshold do linear search.
         {
+            // std::cout << "zou le line \n";
             int lo = 0;
             while (lo < n->slotuse && key_less(n->slotkey[lo], key)) ++lo;
+#ifdef LEVEL_COUNT_TIME
+        auto currentTime2 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
+#endif
+       
             return lo;
         }
+
+ 
+
     }
 
 
@@ -1821,137 +1845,35 @@ private:
 
     }
 
+
     template <typename node_type>
-    inline int find_lower_liner_int(const node_type* n, const key_type& key ) const
+    inline int find_lower_liner(const node_type* n, const key_type& key ) const
     {
-        if (n->slotuse == 0) return 0;
-        int lo = 0, hi = n->slotuse;
-        int pre_target;
-
-        size_t smallkey = (key - n->slotkey[0]) >> n->key_move_bits;
-
-        // if(n->reverse && key < ((size_t)1 << 53)){
-        //     pre_target = static_cast<int> ( ( (key - n->rfb ) * n->rfa ) >> n->right_move);
-        //     // std::cout << "111" << std::endl;
-        // }else{
-            pre_target = static_cast<int>(static_cast<size_t>(n->fa) * smallkey)>>20;
-        // }
-        pre_target > 0 ? pre_target = pre_target : pre_target = 0;
-        int point = pre_target >= hi ? hi-1 : pre_target ;
-        // std::cout << "pre_target = " << pre_target << std::endl;
-
-        // size_t left = n->slotkey[point-8>=0?point-8:0];
-        // size_t right = n->slotkey[point+8<hi?point+8:hi-1];
-
-
-        if(n->slotkey[point] < key){
-
-            while (point < hi && key_less(n->slotkey[point], key)) {
-                // node* tmp = n->childid[point];
-                ++point;
-            }
-        }else{
-
-            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                // node* tmp = n->childid[point];
-                --point;
-            }
-            point++;
-        }
-        // node* tmp = n->childid[point];
-        // __builtin_prefetch(&(tmp->slotuse),0,1);
-#ifdef COUNT_GAP
-        // std::cout << "point = " << point << std::endl;
-        int gap = abs(pre_target-point) ;
-        gaps[btree_level] += gap;
-        gaps_count[btree_level]++;
+#ifdef LINECOUNT_TIME
+        auto currentTime1 = std::chrono::high_resolution_clock::now();
 #endif
-        return point;
-
-    }
-
-    // template <typename node_type>
-    inline int find_lower_liner(const inner_node* n, const key_type& key ) const
-    {
         if (n->slotuse == 0) return 0;
         int lo = 0, hi = n->slotuse;
-        int pre_target;
+        int pre_target,point;
+        size_t smallkey = (key - n->value_base) >> n->key_move_bits;
+        size_t x = static_cast<size_t>(smallkey + n->fb);
 
-
-        // if(n->reverse && key < ((size_t)1 << 53)){
-        //     pre_target = static_cast<int> ( ( (key - n->rfb ) * n->rfa ) >> n->right_move);
-        //     // std::cout << "111" << std::endl;
-        // }else{
-
-        // auto currentTime1 = std::chrono::high_resolution_clock::now();
-
-            pre_target = static_cast<int>(n->fa * key + n->fb);
-
-
-        // auto currentTime2 = std::chrono::high_resolution_clock::now();
-        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        // exec_times[0] +=  (nanoseconds2 - nanoseconds1);
-        // exec_counts[0]++;
-
-
-
-        // }
-        pre_target > 0 ? pre_target = pre_target : pre_target = 0;
-        int point = pre_target >= hi ? hi-1 : pre_target ;
-        // std::cout << "pre_target = " << pre_target << std::endl;
-
-        // size_t left = n->slotkey[point-8>=0?point-8:0];
-        // size_t right = n->slotkey[point+8<hi?point+8:hi-1];
-
-
-        if(n->slotkey[point] < key){
-
-            while (point < hi && key_less(n->slotkey[point], key)) {
-                node* tmp = n->childid[point];
-                ++point;
-            }
-        }else{
-
-            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                node* tmp = n->childid[point];
-                --point;
-            }
-            point++;
-        }
-        node* tmp = n->childid[point];
-        __builtin_prefetch(&(tmp->slotuse),0,1);
-        __builtin_prefetch(&(tmp->slotuse)+64,0,1);
-
-#ifdef COUNT_GAP
-        // std::cout << "point = " << point << std::endl;
-        int gap = abs(pre_target-point) ;
-        gaps[btree_level] += gap;
-        gaps_count[btree_level]++;
+#ifdef L0_TIME
+        auto currentTime1 = std::chrono::high_resolution_clock::now();
 #endif
-        return point;
-
-    }
-
-    // template <typename node_type>
-    inline int find_lower_liner(const leaf_node* n, const key_type& key ) const
-    {
-        if (n->slotuse == 0) return 0;
-        int lo = 0, hi = n->slotuse;
-        int pre_target;
-
-
-        // if(n->reverse && key < ((size_t)1 << 53)){
-        //     pre_target = static_cast<int> ( ( (key - n->rfb ) * n->rfa ) >> n->right_move);
-        //     // std::cout << "111" << std::endl;
-        // }else{
-        //     pre_target = static_cast<int>(n->fa * key + n->fb);
-        // }
-
         pre_target = static_cast<int>(n->fa * key + n->fb);
-        pre_target > 0 ? pre_target = pre_target : pre_target = 0;
-        int point = pre_target >= hi ? hi-1 : pre_target ;
-
+#ifdef L0_TIME
+        auto currentTime2 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        if(btree_level==0){
+            exec_times[0] +=  (nanoseconds2 - nanoseconds1);
+            exec_counts[0]++;
+        }
+#endif
+        pre_target = pre_target >= hi ? hi-1 : pre_target ;
+        pre_target = pre_target < 0 ? 0 : pre_target;
+        point = pre_target;
         // __builtin_prefetch(&(n->slotdata[point]),0,1);
         if(n->slotkey[point] < key){
 
@@ -1968,560 +1890,51 @@ private:
             point++;
         }
 
-#ifdef COUNT_GAP
-        int gap = abs(pre_target-point) ;
-        gaps[btree_level] += gap;
-        gaps_count[btree_level]++;
-#endif
-        return point;
-
-    }
-
-    template <typename node_type>
-    inline int find_lower_liner_exp(const node_type* n, const key_type& key ) const
-    {
-        if (n->slotuse == 0) return 0;
-        int lo = 0, hi = n->slotuse;
-        int pre_target;
-
-
-        // if(n->reverse && key < ((size_t)1 << 53)){
-        //     pre_target = static_cast<int> ( ( (key - n->rfb ) * n->rfa ) >> n->right_move);
-        //     // std::cout << "111" << std::endl;
-        // }else{
-            pre_target = static_cast<int>(n->fa * key + n->fb);
-        // }
-        pre_target > 0 ? pre_target = pre_target : pre_target = 0;
-        int point = pre_target >= hi ? hi-1 : pre_target ;
-        // std::cout << "pre_target = " << pre_target << std::endl;
-
-        if(n->slotkey[point] < key){
-            int step = 1;
-            int tmp = point;
-            while (point < hi && key_less(n->slotkey[point], key)) {
-                tmp = point;
-                point += step;
-                step <<= 1;
-            }
-            point = point >= hi ? hi : point;
-
-            while (tmp < point)
-            {
-                int m = (tmp+point) >> 1;
-                if (key <= n->slotkey[m]){
-                    point = m;
-                }else{
-                    tmp = m+1;
-                }
-            }
-            
-        }else{
-            int step = 1;
-            int tmp = point;
-            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                tmp = point;
-                point -= step;
-                step <<= 1;
-            }
-
-            point = point < 0 ? 0 : point;
-            while (point < tmp)
-            {
-                int m = (point+tmp) >> 1;
-                if (key <= n->slotkey[m]){
-                    tmp = m;
-                }else{
-                    point = m+1;
-                }
-            }
-        }
-
-#ifdef COUNT_GAP
-        // std::cout << "point = " << point << std::endl;
-        int gap = abs(pre_target-point) ;
-        gaps[btree_level] += gap;
-        gaps_count[btree_level]++;
-#endif
-        return point;
-
-    }
-
-    template <typename node_type>
-    inline int find_lower_x2_binary(const node_type* n, const key_type& key ) const
-    {
-        if (n->slotuse == 0) return 0;
-        int lo = 0, hi = n->slotuse;
-        int lo_c = 0, hi_c = n->slotuse;
-        // int pre_target;
-        // std::cout << "key = " << key << "\n";
-        // cout_nodeinfo(n);
-        while(lo < hi){
-            int mid = (lo+hi) >> 1;
-            // auto ry = n->fa*table_x2[mid] + n->fb*mid + n->fc;
-            auto ry = n->fa*table_x2[static_cast<int>(fabs(mid + n->fb))] + n->fc;
-            if (key <= static_cast<size_t>(ry)){
-                hi = mid;
-            }else{
-                lo = mid+1;
-            }
-        }
-
-        // std::cout << "lo = " << lo << std::endl;
-        int pre_target = lo;
-        int point = lo >= hi_c ? hi_c-1 : lo ;
-
-        if(n->slotkey[point] < key){
-            int step = 1;
-            int tmp = point;
-            while (point < hi_c && key_less(n->slotkey[point], key)) {
-                tmp = point;
-                point += step;
-                step <<= 1;
-            }
-            point = point >= hi_c ? hi_c : point;
-
-            while (tmp < point)
-            {
-                int m = (tmp+point) >> 1;
-                if (key <= n->slotkey[m]){
-                    point = m;
-                }else{
-                    tmp = m+1;
-                }
-            }
-            
-        }else{
-            int step = 1;
-            int tmp = point;
-            while (lo_c <= point && key_greaterequal(n->slotkey[point], key)) {
-                tmp = point;
-                point -= step;
-                step <<= 1;
-            }
-
-            point = point < 0 ? 0 : point;
-            while (point < tmp)
-            {
-                int m = (point+tmp) >> 1;
-                if (key <= n->slotkey[m]){
-                    tmp = m;
-                }else{
-                    point = m+1;
-                }
-            }
-        }
-
-#ifdef COUNT_GAP
-        int gap = abs(pre_target-point) ;
-        gaps[btree_level] += gap;
-        gaps_count[btree_level]++;
-        // std::cout << "finderr = "<< abs(point-pre_target) << std::endl;
-#endif
-        return point;
-
-    }
-
-    template <typename node_type>
-    inline int find_lower_x2(const node_type* n, const key_type& key ) const
-    {
-        if (n->slotuse == 0) return 0;
-        int lo = 0, hi = n->slotuse;
-        int lo_c = 0, hi_c = n->slotuse;
-
-        int pre_target;
-        int point;
-        auto currentTime1 = std::chrono::high_resolution_clock::now();
-        if(n->fa >= 0)
-            pre_target = static_cast<int>(std::sqrt((key-n->fc)/n->fa) - n->fb);
-        else
-            pre_target = static_cast<int>(-std::sqrt((key-n->fc)/n->fa) - n->fb);
+#ifdef LINECOUNT_TIME
         auto currentTime2 = std::chrono::high_resolution_clock::now();
         auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
         auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
         exec_times[0] +=  (nanoseconds2 - nanoseconds1);
         exec_counts[0]++;
+#endif
 
-        // pre_target = 0;
-        pre_target = pre_target >= hi_c ? hi_c-1 : pre_target ;
-        pre_target = pre_target < 0 ? 0 : pre_target;
-        point = pre_target;
-
-        if(n->slotkey[point] < key){
-            int step = 1;
-            int tmp = point;
-            while (point < hi_c && key_less(n->slotkey[point], key)) {
-                tmp = point;
-                point += step;
-                step <<= 1;
-            }
-            point = point >= hi_c ? hi_c : point;
-
-            while (tmp < point)
-            {
-                int m = (tmp+point) >> 1;
-                if (key <= n->slotkey[m]){
-                    point = m;
-                }else{
-                    tmp = m+1;
-                }
-            }
-            
-        }else{
-            int step = 1;
-            int tmp = point;
-            while (lo_c <= point && key_greaterequal(n->slotkey[point], key)) {
-                tmp = point;
-                point -= step;
-                step <<= 1;
-            }
-
-            point = point < 0 ? 0 : point;
-            while (point < tmp)
-            {
-                int m = (point+tmp) >> 1;
-                if (key <= n->slotkey[m]){
-                    tmp = m;
-                }else{
-                    point = m+1;
-                }
-            }
-        }
 
 #ifdef COUNT_GAP
         int gap = abs(pre_target-point) ;
         gaps[btree_level] += gap;
         gaps_count[btree_level]++;
-        // std::cout << "finderr = "<< abs(point-pre_target) << std::endl;
 #endif
         return point;
 
     }
 
 
-    // template <typename node_type>
-    inline int find_lower_gapx6(const inner_node* n, const key_type& key ) const
+
+    template <typename node_type>
+    inline int find_lower_gapx2(const node_type* n, const key_type& key ) const
     {
         if (n->slotuse == 0) return 0;
         int lo = 0, hi = n->slotuse;
-        int lo_c = 0, hi_c = n->slotuse;
-        size_t smallkey = (key - n->slotkey[0]) >> n->key_move_bits;
-
+        // int lo_c = 0, hi_c = n->slotuse;
         int pre_target, point;
-        // pre_target = static_cast<int>(n->fa * std::pow((smallkey + n->fb),6) + n->fc);
-        size_t x = static_cast<size_t>(smallkey + n->fb);
-
-        pre_target = static_cast<int>(n->fa*(x*x)*(x*x)*(x*x) + n->fc);
-
-        // pre_target = 128;
-        // pre_target = static_cast<int>(n->fa * table_x6[x] + n->fc);
-        // pre_target = 0;
-        // std::cout << "pre_target=" << pre_target << " ";
-
-
-        // pre_target = 0;
-        pre_target = pre_target >= hi_c ? hi_c-1 : pre_target ;
-        pre_target = pre_target < 0 ? 0 : pre_target;
-        point = pre_target;
-        // auto currentTime1 = std::chrono::high_resolution_clock::now();
-
-        // // exp find
-        // if(n->slotkey[point] < key){
-        //     int step = 1;
-        //     int tmp = point;
-        //     while (point < hi_c && key_less(n->slotkey[point], key)) {
-        //         tmp = point;
-        //         point += step;
-        //         step <<= 1;
-        //     }
-        //     point = point >= hi_c ? hi_c : point;
-
-        //     while (tmp < point)
-        //     {
-        //         int m = (tmp+point) >> 1;
-        //         if (key <= n->slotkey[m]){
-        //             point = m;
-        //         }else{
-        //             tmp = m+1;
-        //         }
-        //     }
-            
-        // }else{
-        //     int step = 1;
-        //     int tmp = point;
-        //     while (lo_c <= point && key_greaterequal(n->slotkey[point], key)) {
-        //         tmp = point;
-        //         point -= step;
-        //         step <<= 1;
-        //     }
-
-        //     point = point < 0 ? 0 : point;
-        //     while (point < tmp)
-        //     {
-        //         int m = (point+tmp) >> 1;
-        //         if (key <= n->slotkey[m]){
-        //             tmp = m;
-        //         }else{
-        //             point = m+1;
-        //         }
-        //     }
-        // }
-
-
-        size_t left = n->slotkey[point-8>=0?point-8:0];
-        size_t right = n->slotkey[point+8<hi?point+8:hi-1];
-
-        // if(n->slotkey[point] < key){
-
-        //     while (point < hi && key_less(n->slotkey[point], key)) {
-        //         node* tmp = n->childid[point];
-        //         // auto h = tmp->slotuse;
-        //         // __builtin_prefetch(&(n->childid[point]),0,1);
-        //         ++point;
-        //     }
-        // }else{
-        //     while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-        //         node* tmp = n->childid[point];
-        //         // auto h = tmp->slotuse;
-        //         // __builtin_prefetch(&(n->childid[point]),0,1);
-        //         --point;
-        //     }
-        //     point++;
-        // }
-        // node* tmp = n->childid[point];
-        // auto h = tmp->slotuse;
-
-
-        if(n->slotkey[point] < key){
-
-            while (point < hi && key_less(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point+=4;
-            }
-            point-=4;
-            while (point < hi && key_less(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point++;
-            }
-
-        }else{
-
-            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point-=4;
-            }
-            point+=4;
-            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point--;
-            }
-            point++;
-        }
-
-
-        // auto currentTime2 = std::chrono::high_resolution_clock::now();
-        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        // exec_times[0] +=  (nanoseconds2 - nanoseconds1);
-        // exec_counts[0]++;
-
-
-#ifdef COUNT_GAP
-        // std::cout << "point=" << point << "\n";
-        int gap = abs(pre_target-point) ;
-        // if(gap > 1000) std::cout << n->fa << " " << n->fb << " " << static_cast<size_t>(n->fc) << 
-        // " " << key << " " << pre_target << " " << point << "\n";
-        gaps[btree_level] += gap;
-        gaps_count[btree_level]++;
-        // std::cout << "finderr = "<< abs(point-pre_target) << std::endl;
-#endif
-        return point;
-
-    }
-
-    // template <typename node_type>
-    inline int find_lower_gapx6(const leaf_node* n, const key_type& key ) const
-    {
-        if (n->slotuse == 0) return 0;
-        int lo = 0, hi = n->slotuse;
-        int lo_c = 0, hi_c = n->slotuse;
-        size_t smallkey = (key - n->slotkey[0]) >> n->key_move_bits;
-
-        int pre_target, point;
-        // pre_target = static_cast<int>(n->fa * std::pow((smallkey + n->fb),6) + n->fc);
-        size_t x = static_cast<size_t>(smallkey + n->fb);
-
-        pre_target = static_cast<int>(n->fa*(x*x)*(x*x)*(x*x) + n->fc);
-
-        // pre_target = 128;
-        // pre_target = static_cast<int>(n->fa * table_x6[x] + n->fc);
-        // pre_target = 0;
-        // std::cout << "pre_target=" << pre_target << " ";
-
-
-        // pre_target = 0;
-        pre_target = pre_target >= hi_c ? hi_c-1 : pre_target ;
-        pre_target = pre_target < 0 ? 0 : pre_target;
-        point = pre_target;
-        // auto currentTime1 = std::chrono::high_resolution_clock::now();
-
-        // // exp find
-        // if(n->slotkey[point] < key){
-        //     int step = 1;
-        //     int tmp = point;
-        //     while (point < hi_c && key_less(n->slotkey[point], key)) {
-        //         tmp = point;
-        //         point += step;
-        //         step <<= 1;
-        //     }
-        //     point = point >= hi_c ? hi_c : point;
-
-        //     while (tmp < point)
-        //     {
-        //         int m = (tmp+point) >> 1;
-        //         if (key <= n->slotkey[m]){
-        //             point = m;
-        //         }else{
-        //             tmp = m+1;
-        //         }
-        //     }
-            
-        // }else{
-        //     int step = 1;
-        //     int tmp = point;
-        //     while (lo_c <= point && key_greaterequal(n->slotkey[point], key)) {
-        //         tmp = point;
-        //         point -= step;
-        //         step <<= 1;
-        //     }
-
-        //     point = point < 0 ? 0 : point;
-        //     while (point < tmp)
-        //     {
-        //         int m = (point+tmp) >> 1;
-        //         if (key <= n->slotkey[m]){
-        //             tmp = m;
-        //         }else{
-        //             point = m+1;
-        //         }
-        //     }
-        // }
-
-
-        size_t left1 = n->slotkey[point-8>=0?point-8:0];
-        size_t right1 = n->slotkey[point+8<hi?point+8:hi-1];
-        size_t left2 = n->slotkey[point-8>=0?point-16:0];
-        size_t right2 = n->slotkey[point+8<hi?point+16:hi-1];
-        size_t left3 = n->slotkey[point-8>=0?point-24:0];
-        size_t right3 = n->slotkey[point+8<hi?point+24:hi-1];
-        size_t left4 = n->slotkey[point-8>=0?point-32:0];
-        size_t right4 = n->slotkey[point+8<hi?point+32:hi-1];
-
-        if(n->slotkey[point] < key){
-
-            while (point < hi && key_less(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point+=4;
-            }
-            point-=4;
-            while (point < hi && key_less(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point++;
-            }
-
-        }else{
-
-            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point-=4;
-            }
-            point+=4;
-            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point--;
-            }
-            point++;
-        }
-
-        // if(n->slotkey[point] < key){
-        //     while (point < hi && key_less(n->slotkey[point], key)) {
-        //         // node* tmp = n->childid[point];
-        //         // auto h = tmp->slotuse;
-        //         // __builtin_prefetch(&(n->childid[point]),0,1);
-        //         ++point;
-        //     }
-        // }else{
-        //     while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-        //         // node* tmp = n->childid[point];
-        //         // auto h = tmp->slotuse;
-        //         // __builtin_prefetch(&(n->childid[point]),0,1);
-        //         --point;
-        //     }
-        //     point++;
-        // }
-        // auto currentTime2 = std::chrono::high_resolution_clock::now();
-        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        // exec_times[0] +=  (nanoseconds2 - nanoseconds1);
-        // exec_counts[0]++;
-
-
-#ifdef COUNT_GAP
-        // std::cout << "point=" << point << "\n";
-        int gap = abs(pre_target-point) ;
-        // if(gap > 1000) std::cout << n->fa << " " << n->fb << " " << static_cast<size_t>(n->fc) << 
-        // " " << key << " " << pre_target << " " << point << "\n";
-        gaps[btree_level] += gap;
-        gaps_count[btree_level]++;
-        // std::cout << "finderr = "<< abs(point-pre_target) << std::endl;
-#endif
-        return point;
-
-    }
-
-
-    // template <typename node_type>
-    inline int find_lower_gapx2(const inner_node* n, const key_type& key ) const
-    {
-        if (n->slotuse == 0) return 0;
-        int lo = 0, hi = n->slotuse;
-        int lo_c = 0, hi_c = n->slotuse;
         size_t smallkey = (key - n->value_base) >> n->key_move_bits;
-
-        int pre_target, point;
         size_t x = static_cast<size_t>(smallkey + n->fb);
-        // auto currentTime1 = std::chrono::high_resolution_clock::now();
+
 
         pre_target = static_cast<int>(n->fa*(x*x) + n->fc);
 
-
-        // auto currentTime2 = std::chrono::high_resolution_clock::now();
-        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        // exec_times[0] +=  (nanoseconds2 - nanoseconds1);
-        // exec_counts[0]++;
-
-        pre_target = pre_target >= hi_c ? hi_c-1 : pre_target ;
+        pre_target = pre_target >= hi ? hi-1 : pre_target ;
         pre_target = pre_target < 0 ? 0 : pre_target;
         point = pre_target;
 
-
-
         if(n->slotkey[point] < key){
 
-            while (point < hi && key_less(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point+=4;
-            }
-            point-=4;
+            // while (point < hi && key_less(n->slotkey[point], key)) {
+            //     // auto tmp = n->slotdata[point];
+            //     // __builtin_prefetch(&(n->slotdata[point]),0,1);
+            //     point+=4;
+            // }
+            // point-=4;
             while (point < hi && key_less(n->slotkey[point], key)) {
                 // auto tmp = n->slotdata[point];
                 // __builtin_prefetch(&(n->slotdata[point]),0,1);
@@ -2530,83 +1943,12 @@ private:
 
         }else{
 
-            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point-=4;
-            }
-            point+=4;
-            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point--;
-            }
-            point++;
-        }
-
-
-        node* tmp = n->childid[point];
-        __builtin_prefetch(&(tmp->slotuse),0,1);
-        __builtin_prefetch(&(tmp->slotuse)+64,0,1);
-
-#ifdef COUNT_GAP
-        int gap = abs(pre_target-point) ;
-        gaps[btree_level] += gap;
-        gaps_count[btree_level]++;
-        // std::cout << "finderr = "<< abs(point-pre_target) << std::endl;
-#endif
-        return point;
-
-    }
-
-    // template <typename node_type>
-    inline int find_lower_gapx2(const leaf_node* n, const key_type& key ) const
-    {
-        if (n->slotuse == 0) return 0;
-        int lo = 0, hi = n->slotuse;
-        int lo_c = 0, hi_c = n->slotuse;
-        size_t smallkey = (key - n->value_base) >> n->key_move_bits;
-
-        int pre_target, point;
-        size_t x = static_cast<size_t>(smallkey + n->fb);
-
-        // auto currentTime1 = std::chrono::high_resolution_clock::now();
-        pre_target = static_cast<int>(n->fa*(x*x) + n->fc);
-
-        // auto currentTime2 = std::chrono::high_resolution_clock::now();
-        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        // exec_times[0] +=  (nanoseconds2 - nanoseconds1);
-        // exec_counts[0]++;
-
-        pre_target = pre_target >= hi_c ? hi_c-1 : pre_target ;
-        pre_target = pre_target < 0 ? 0 : pre_target;
-        point = pre_target;
-
-
-
-        if(n->slotkey[point] < key){
-
-            while (point < hi && key_less(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point+=4;
-            }
-            point-=4;
-            while (point < hi && key_less(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point++;
-            }
-
-        }else{
-
-            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                // auto tmp = n->slotdata[point];
-                // __builtin_prefetch(&(n->slotdata[point]),0,1);
-                point-=4;
-            }
-            point+=4;
+            // while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
+            //     // auto tmp = n->slotdata[point];
+            //     // __builtin_prefetch(&(n->slotdata[point]),0,1);
+            //     point-=4;
+            // }
+            // point+=4;
             while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
                 // auto tmp = n->slotdata[point];
                 // __builtin_prefetch(&(n->slotdata[point]),0,1);
@@ -2633,26 +1975,93 @@ private:
     template <typename node_type>
     inline int find_lower_gapx3(const node_type* n, const key_type& key ) const
     {
-        return 0;
+#ifdef X3COUNT_TIME
+        auto currentTime1 = std::chrono::high_resolution_clock::now();
+#endif
+        // return 0;
         if (n->slotuse == 0) return 0;
         int lo = 0, hi = n->slotuse;
-        int lo_c = 0, hi_c = n->slotuse;
+        // int lo_c = 0, hi_c = n->slotuse;
         size_t smallkey = (key - n->value_base) >> n->key_move_bits;
 
         int pre_target, point;
-        // auto currentTime1 = std::chrono::high_resolution_clock::now();
-        // pre_target = static_cast<int>(n->fa * std::pow(smallkey + n->fb,3) + n->fc);
         size_t x = static_cast<size_t>(smallkey + n->fb);
         pre_target = static_cast<int>(n->fa*(x*x*x) + n->fc);
 
-        // auto currentTime2 = std::chrono::high_resolution_clock::now();
-        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        // exec_times[0] +=  (nanoseconds2 - nanoseconds1);
-        // exec_counts[0]++;
+        // pre_target = static_cast<int>(n->fa*key + n->fc);
 
-        // pre_target = 0;
-        pre_target = pre_target >= hi_c ? hi_c-1 : pre_target ;
+        pre_target = pre_target >= hi ? hi-1 : pre_target ;
+        pre_target = pre_target < 0 ? 0 : pre_target;
+        point = pre_target;
+
+        if(n->slotkey[point] < key){
+
+            while (point < hi && key_less(n->slotkey[point], key)) {
+                // auto tmp = n->slotdata[point];
+                // __builtin_prefetch(&(n->slotdata[point]),0,1);
+                point+=4;
+            }
+            point-=4;
+            while (point < hi && key_less(n->slotkey[point], key)) {
+                // auto tmp = n->slotdata[point];
+                // __builtin_prefetch(&(n->slotdata[point]),0,1);
+                point++;
+            }
+
+        }else{
+
+            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
+                // auto tmp = n->slotdata[point];
+                // __builtin_prefetch(&(n->slotdata[point]),0,1);
+                point-=4;
+            }
+            point+=4;
+            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
+                // auto tmp = n->slotdata[point];
+                // __builtin_prefetch(&(n->slotdata[point]),0,1);
+                point--;
+            }
+            point++;
+        }
+#ifdef X3COUNT_TIME
+        auto currentTime2 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        exec_times[0] +=  (nanoseconds2 - nanoseconds1);
+        exec_counts[0]++;
+#endif
+
+
+#ifdef COUNT_GAP
+        int gap = abs(pre_target-point) ;
+        gaps[btree_level] += gap;
+        gaps_count[btree_level]++;
+        // std::cout << "finderr = "<< abs(point-pre_target) << std::endl;
+#endif
+        return point;
+
+    }
+
+
+    template <typename node_type>
+    inline int find_lower_gapx6(const node_type* n, const key_type& key ) const
+    {
+#ifdef X6COUNT_TIME
+        auto currentTime1 = std::chrono::high_resolution_clock::now();
+#endif
+        if (n->slotuse == 0) return 0;
+        int lo = 0, hi = n->slotuse;
+        // int lo_c = 0, hi_c = n->slotuse;
+        // size_t smallkey = (key - n->slotkey[0]) >> n->key_move_bits;
+
+        int pre_target, point;
+        // pre_target = static_cast<int>(n->fa * std::pow((smallkey + n->fb),6) + n->fc);
+        // size_t x = static_cast<size_t>(smallkey + n->fb);
+
+        pre_target = static_cast<int>(n->fa*key + n->fb);
+        // pre_target = static_cast<int>(n->fa*(x*x)*(x*x)*(x*x) + n->fc);
+
+        pre_target = pre_target >= hi ? hi-1 : pre_target ;
         pre_target = pre_target < 0 ? 0 : pre_target;
         point = pre_target;
 
@@ -2688,9 +2097,19 @@ private:
             point++;
         }
 
+#ifdef X6COUNT_TIME
+        auto currentTime2 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        exec_times[0] +=  (nanoseconds2 - nanoseconds1);
+        exec_counts[0]++;
+#endif
 
 #ifdef COUNT_GAP
+        // std::cout << "point=" << point << "\n";
         int gap = abs(pre_target-point) ;
+        // if(gap > 1000) std::cout << n->fa << " " << n->fb << " " << static_cast<size_t>(n->fc) << 
+        // " " << key << " " << pre_target << " " << point << "\n";
         gaps[btree_level] += gap;
         gaps_count[btree_level]++;
         // std::cout << "finderr = "<< abs(point-pre_target) << std::endl;
@@ -2703,23 +2122,17 @@ private:
     template <typename node_type>
     inline int find_lower_x(const node_type* n, const key_type& key ) const
     {
+        // if(btree_level==0){
+        //     cout_nodeinfo(n);
+        // }
+#ifdef LEVEL_COUNT_TIME
+        auto currentTime1 = std::chrono::high_resolution_clock::now();
+#endif
         int res;
         switch (n->model_type)
         {
         case modelType::LINE:
             res = find_lower_liner(n,key);
-            break;
-
-        case modelType::LINE_INT:
-            res = find_lower_liner_int(n,key);
-            break;
-
-        case modelType::LINE_EXP:
-            res = find_lower_liner_exp(n,key);
-            break;
-
-        case modelType::X2:
-            res = find_lower_x2(n,key);
             break;
 
         case modelType::GAPX6:
@@ -2728,6 +2141,7 @@ private:
 
         case modelType::GAPX2:
             res = find_lower_gapx2(n,key);
+
             break;
 
         case modelType::GAPX3:
@@ -2735,14 +2149,25 @@ private:
             break;
 
         case modelType::GENERAL:
+            // std::cout << "binary...gene\n";
+            // std::cout << btree_level << " binary...gene\n";
             res = find_lower(n,key);
             break;
 
         default:
+            std::cout << "binary...default\n";
             res = find_lower(n,key);
             break;
         }
 
+#ifdef LEVEL_COUNT_TIME
+        auto currentTime2 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        // if(btree_level == 0)
+        level_delay[btree_level] += (nanoseconds2 - nanoseconds1);
+        level_delay_count[btree_level]++;
+#endif
         return res;
 
     }
@@ -2776,17 +2201,6 @@ private:
 
         // int point = pre_target >= hi ? hi-1: pre_target;
         int point = pre_target >=  hi ? hi-1: pre_target;
-
-        // auto currentTime2 = std::chrono::high_resolution_clock::now();
-        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        // level_delay[3] +=  (nanoseconds2 - nanoseconds1);
-        // level_delay[4]++;
-        // __builtin_prefetch(&(n->slotkey[point])+64, 0, 2);
-        // __builtin_prefetch(&(n->slotkey[point])-64, 0, 2);
-        // if(pre_target > 0 && n->isleafnode()){return 0;}
-        
-        // int strid=1;
         if(n->slotkey[point] < key){
             // if(n->isleafnode()){return 0;}
             // __builtin_prefetch(&(n->slotkey[point])+64, 0, 2);
@@ -2803,45 +2217,6 @@ private:
             }
             point++;
         }
-        // if(  std::abs(point-pre_target) > 8 ){
-        //     std::cout << "erroe rate is " << std::abs(point-pre_target) << std::endl;
-        // }
-
-        // if(!n->isleafnode()){
-        //     int gap = point-pre_target > 0 ? point-pre_target : pre_target-point;
-        //     level_delay[3] += gap;
-        //     level_delay[4] ++;
-        //     // std::cout << key << " " << point-pre_target << std::endl;
-        //     // std::cout 
-        //     // << " " << n->slotkey[lo] 
-        //     // << " " << n->slotkey[(lo+mid)>>1] 
-        //     // << " " << n->slotkey[mid] 
-        //     // << " " << n->slotkey[(mid+hi)>>1] 
-        //     // << " " << n->slotkey[hi-1] 
-        //     // << std::endl;
-        // }
-
-            // if(n->isleafnode()){
-            //     int gap = point-pre_target > 0 ? point-pre_target : pre_target-point;
-            //     if(gap > 4) std::cout << "gap is " << gap << std::endl;
-            //     // level_delay[3] += gap;
-            //     // level_delay[4] ++;
-            // }
-        int gap = abs(point-pre_target);
-        // if(n->isleafnode()){
-            // std::cout << "key = " << key << "gap = " << gap << "\n";
-            gaps[btree_level] += gap;
-            gaps_count[btree_level]++;
-            // gaps[4] ++;
-        // }
-
-        // if(point > 0 && point < n->slotuse) {
-        //     min_key = n->slotkey[point-1];
-        //     max_key = n->slotkey[point];
-        //     is_max_min = true;
-        // }else{
-        //     is_max_min = false;
-        // }
 
         return point;
         
@@ -2849,6 +2224,878 @@ private:
     }
 
 
+
+    template<typename T>
+    void cout_nodeinfo(const T* n) const{
+        int x4 = n->slotuse - 1;
+        int x2 = x4 >> 1;
+        int x1 = x2 >> 1;
+        int x3 = x2 + x1;
+        int x0 = 0;
+
+        // 计算4段数据的斜率
+        auto y0 = static_cast<double>(n->slotkey[x0]);
+        auto y1 = static_cast<double>(n->slotkey[x1]);
+        auto y2 = static_cast<double>(n->slotkey[x2]);
+        auto y3 = static_cast<double>(n->slotkey[x3]);
+        auto y4 = static_cast<double>(n->slotkey[x4]);
+
+        int m0 = (x1 + x0)>>1;
+        int m1 = (x2 + x1)>>1;
+        int m2 = (x3 + x2)>>1;
+        int m3 = (x4 + x3)>>1;
+
+        auto my0 = static_cast<double>(n->slotkey[m0]);
+        auto my1 = static_cast<double>(n->slotkey[m1]);
+        auto my2 = static_cast<double>(n->slotkey[m2]);
+        auto my3 = static_cast<double>(n->slotkey[m3]);
+
+        // 求k
+        double k0 = ((y1-y0) / (x1 - x0) + (my0-y0)/(m0-x0))/2;
+        double k1 = ((y2-y1) / (x2 - x1) + (my1-y1)/(m1-x1))/2;
+        double k2 = ((y3-y2) / (x3 - x2) + (my2-y2)/(m2-x2))/2;
+        double k3 = ((y4-y3) / (x4 - x3) + (my3-y3)/(m3-x3))/2;
+
+        // double fa = (x4-x0) / (y4-0);
+        double left_kk  = k1-k0>0 ? k1/k0-1 : -k0/k1+1;
+        double mid_kk   = k2-k1>0 ? k2/k1-1 : -k1/k2+1;
+        double right_kk = k3-k2>0 ? k3/k2-1 : -k2/k3+1;
+        std::cout << "k0-k3 " << k0 << " " << k1 << " " << k2 << " " << k3 << " | ";
+        std::cout << "kk " << left_kk << " " << mid_kk << " " << right_kk << " | ";
+        std::cout << "data_is ";
+        for(int i=0;i<n->slotuse;i++){
+            std::cout << n->slotkey[i] << ",";
+        }
+        std::cout << "\n";
+    }
+
+    template<typename T>
+    int  check_fitting(T* n, size_t & line_err, size_t & errs){
+        int len = n->slotuse;
+        for(int i=0;i<len;i++){
+            size_t e = n->slotkey[i];
+            int site1 = n->fa * e + n->fd + n->fb * sin((e - n->fe) * n->fc  );
+            // int site1 = n->fa * e + n->fd;
+            int site2 = (n->fa * e) + n->fd;
+            int site3 = find_lower(n,e);
+            line_err += abs(site2-site3);
+            errs += abs(site1-site3);
+        }
+
+        line_err /= len;
+        errs /= len;
+
+        return 0;
+    }
+
+    template<typename T>
+    int  check_fitting_x4(T* n, size_t & line_err, size_t & errs){
+        int len = n->slotuse;
+        for(int i=0;i<len;i++){
+            int lo=0,hi=n->slotuse;
+            size_t e = n->slotkey[i];
+            int site1 ;
+            // = n->fa * e + n->fd + n->fb * sin((e - n->fe) * n->fc  );
+            while(lo < hi){
+                int mid = (lo+hi) >> 1;
+                auto ry = n->fa*table_x4[mid] + n->fb*table_x3[mid] + n->fc*table_x2[mid] +n->fd*mid + n->fe;
+                if (e <= static_cast<size_t>(ry)){
+                    hi = mid;
+                }else{
+                    lo = mid+1;
+                }
+            }
+            site1 = lo;
+
+            // int site1 = n->fa * e + n->fd;
+            int site2 = (n->fa * e) + n->fd;
+            int site3 = find_lower(n,e);
+            line_err += abs(site2-site3);
+            errs += abs(site1-site3);
+        }
+
+        line_err /= len;
+        errs /= len;
+
+        return 0;
+    }
+
+
+    size_t get_lt1024(size_t a, int& i){
+        size_t tmp = a;
+        i = 0;
+        while(tmp >> 8){
+            tmp >>= 8;
+            i+=8;
+        }
+        while(tmp >> 1){
+            tmp >>=1;
+            i++;
+        }
+
+        return a >> (1-10 > 0 ? i-10 : 0);
+
+    }
+
+    int get_first_1_site(size_t a){
+        size_t tmp = a;
+        int i = 0;
+        while(tmp >> 8){
+            tmp >>= 8;
+            i+=8;
+        }
+        while(tmp >> 1){
+            tmp >>=1;
+            i++;
+        }
+
+        return i;
+
+    }
+
+    // std::vector<std::vector<double>> get_inverse(std::vector<std::vector<double>> input){
+    //     Eigen::MatrixXd m(4,4);
+    //     for(int i=0;i<4;i++){
+    //         for(int j=0;j<4;j++){
+    //             m(i,j) = input[i][j];
+    //         }
+    //     }
+    //     auto res = m.inverse();
+    //     std::vector<std::vector<double>> output(4,std::vector<double>(4));
+    //     for(int i=0;i<4;i++){
+    //         for(int j=0;j<4;j++){
+    //             output[i][j] = res(i,j);
+    //         }
+    //     }
+
+    //     return output;
+
+    // }
+
+
+    template<typename T>
+    bool fitting_liner_int(T* n, std::string flag){
+#ifdef MYDEBUG
+std::cout <<  flag << " ";
+cout_nodeinfo(n);
+#endif
+        n->model_type = modelType::LINE_INT;
+        // array sites
+        int x4 = n->slotuse - 1;
+        int x2 = x4 >> 1;
+        int x1 = x2 >> 1;
+        int x3 = x2 + x1;
+        int x0 = 0;
+
+        // 计算4段数据的斜率
+        size_t y0 = (n->slotkey[x0]);
+        size_t y1 = (n->slotkey[x1]);
+        size_t y2 = (n->slotkey[x2]);
+        size_t y3 = (n->slotkey[x3]);
+        size_t y4 = (n->slotkey[x4]);
+
+        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
+        size_t value_base = n->slotkey[x0];
+        n->value_base = value_base;
+        int first1 = get_first_1_site(value_gaps) ;
+        int right_move_bits = first1 > 8 ? first1 - 8 : 0;
+        n->key_move_bits = right_move_bits;
+
+        // 计算4段数据的斜率
+        size_t ry0 = ((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
+        size_t ry1 = ((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
+        size_t ry2 = ((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
+        size_t ry3 = ((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
+        size_t ry4 = ((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
+        // 求k
+        // double k0 = (ry1-ry0) / (x1 - x0);
+        // double k1 = (ry2-ry1) / (x2 - x1);
+        // double k2 = (ry3-ry2) / (x3 - x2);
+        // double k3 = (ry4-ry3) / (x4 - x3);
+        size_t k =   ((x4 - x0)<<20) / (ry4-ry0);
+
+        // std::vector<DataPoint> input = {{x0,y0},{x1,y1},{x2,y2},{x3,y3},{x4,y4}};
+        // std::pair<double,double> r = LinearRegressionModelTrain(input);
+        // n->fa = r.first;
+        // n->fb = r.second;
+
+        // fitting
+        n->fa = static_cast<double>(k);
+        n->fb = 0;
+
+
+
+        return true;
+    }
+
+    template<typename T>
+    bool fitting_liner(T* n, std::string flag){
+#ifdef MYDEBUG
+std::cout <<  flag << " ";
+cout_nodeinfo(n);
+#endif
+        n->model_type = modelType::LINE;
+
+        // array sites
+        int x4 = n->slotuse - 1;
+        int x2 = x4 >> 1;
+        int x1 = x2 >> 1;
+        int x3 = x2 + x1;
+        int x0 = 0;
+
+
+        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
+        size_t value_base = n->slotkey[x0];
+        int first1 = get_first_1_site(value_gaps) ;
+        int right_move_bits = first1 > 16 ? first1 - 16 : 0;
+        n->value_base = value_base;
+        n->key_move_bits = right_move_bits;
+        // 计算4段数据的斜率
+        auto y0 = static_cast<double>(n->slotkey[x0]);
+        auto y1 = static_cast<double>(n->slotkey[x1]);
+        auto y2 = static_cast<double>(n->slotkey[x2]);
+        auto y3 = static_cast<double>(n->slotkey[x3]);
+        auto y4 = static_cast<double>(n->slotkey[x4]);
+
+        // 计算4段数据的斜率
+        auto ry0 = static_cast<double>((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
+        auto ry1 = static_cast<double>((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
+        auto ry2 = static_cast<double>((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
+        auto ry3 = static_cast<double>((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
+        auto ry4 = static_cast<double>((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
+        // 求k
+        double k0 = (ry1-ry0) / (x1 - x0);
+        double k1 = (ry2-ry1) / (x2 - x1);
+        double k2 = (ry3-ry2) / (x3 - x2);
+        double k3 = (ry4-ry3) / (x4 - x3);
+        double k = (ry4-ry0) / (x4 - x0);
+
+        // fitting
+        double a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
+        n->fa = a1;
+        n->fb = 0 - static_cast<double>(n->fa * y0);
+
+
+
+        return true;
+    }
+
+
+    template<typename T>
+    bool fitting_gap_x2(T* n, std::string flag){
+#ifdef MYDEBUG
+std::cout << flag << " ";
+cout_nodeinfo(n);
+#endif
+
+        // array sites
+        int x4 = n->slotuse - 1;
+        int x2 = x4 >> 1;
+        int x1 = x2 >> 1;
+        int x3 = x2 + x1;
+        int x0 = 0;
+
+
+        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
+        size_t value_base = n->slotkey[x0];
+        int first1 = get_first_1_site(value_gaps) ;
+        int right_move_bits = first1 > 24 ? first1 - 24 : 0;
+        n->value_base = value_base;
+        n->key_move_bits = right_move_bits;
+        // 计算4段数据的斜率
+        auto ry0 = static_cast<double>((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
+        auto ry1 = static_cast<double>((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
+        auto ry2 = static_cast<double>((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
+        auto ry3 = static_cast<double>((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
+        auto ry4 = static_cast<double>((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
+        // 求k
+        double k0 = (ry1-ry0) / (x1 - x0);
+        double k1 = (ry2-ry1) / (x2 - x1);
+        double k2 = (ry3-ry2) / (x3 - x2);
+        double k3 = (ry4-ry3) / (x4 - x3);
+        double k = (ry4-ry0) / (x4 - x0);
+
+        if(k0 > k && k3 < k){
+            n->model_type = modelType::GAPX2;
+
+
+            n->fa = x4 / (ry4*ry4);
+            n->fb = 0;
+            n->fc = 0;
+
+            // n->fa = 0.5*((k3-k0) / (ry3-ry0));
+            // n->fb = k0/(2*n->fa) - ry1;
+            // n->fc = x0 - n->fa *(ry0+n->fb)*(ry0+n->fb);
+        }else if(k0 < k && k3 >k){
+            n->model_type = modelType::GAPX2;
+            n->fa = - x4 /  (ry4*ry4);
+            n->fb = -ry4;
+            n->fc = x4;
+
+            // n->fa = 0.5*((k3-k0) / (ry3-ry0));
+            // n->fb = k0/(2*n->fa) - ry1;
+            // n->fc = x4 - n->fa *(ry4+n->fb)*(ry4+n->fb);
+
+        }else{
+            fitting_liner(n,"liner_x2");
+        }
+
+
+        return true;
+    }
+
+
+    template<typename T>
+    bool fitting_gap_x3(T* n, std::string flag){
+#ifdef MYDEBUG
+std::cout << flag << " ";
+cout_nodeinfo(n);
+#endif
+
+        // array sites
+        int x4 = n->slotuse - 1;
+        int x2 = x4 >> 1;
+        int x1 = x2 >> 1;
+        int x3 = x2 + x1;
+        int x0 = 0;
+
+
+        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
+        size_t value_base = n->slotkey[x0];
+        int first1 = get_first_1_site(value_gaps) ;
+        int right_move_bits = first1 > 16 ? first1 - 16 : 0;
+        n->value_base = value_base;
+        n->key_move_bits = right_move_bits;
+        // 计算4段数据的斜率
+        auto y0 = static_cast<double>(n->slotkey[x0]);
+        auto y1 = static_cast<double>(n->slotkey[x1]);
+        auto y2 = static_cast<double>(n->slotkey[x2]);
+        auto y3 = static_cast<double>(n->slotkey[x3]);
+        auto y4 = static_cast<double>(n->slotkey[x4]);
+
+        // 计算4段数据的斜率
+        auto ry0 = static_cast<double>((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
+        auto ry1 = static_cast<double>((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
+        auto ry2 = static_cast<double>((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
+        auto ry3 = static_cast<double>((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
+        auto ry4 = static_cast<double>((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
+        // 求k
+        double k0 = (ry1-ry0) / (x1 - x0);
+        double k1 = (ry2-ry1) / (x2 - x1);
+        double k2 = (ry3-ry2) / (x3 - x2);
+        double k3 = (ry4-ry3) / (x4 - x3);
+        double k = (ry4-ry0) / (x4 - x0);
+
+        if(k0>k1 && k1>k2 && k2>k3){
+            n->model_type = modelType::GAPX3;
+            n->fa = x4 / std::pow(ry4,3);
+            n->fb = 0;
+            n->fc = 0;
+
+
+            // double a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
+            // n->fa = a1;
+            // n->fb = 0 - static_cast<double>(n->fa * y0);
+
+
+            // n->fa = x4 / (y4-y0);
+            // n->fb = 0 - 30;
+            // n->fc = 0;
+
+        }else if(k0<k1 && k1<k2 && k2<k3){
+            n->model_type = modelType::GAPX3;
+            n->fa = - x4 / std::pow(ry4,3);
+            n->fb = -ry4;
+            n->fc = x4;
+
+
+            double a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
+            n->fa = a1;
+            n->fb = 0 - static_cast<double>(n->fa * y0);
+
+            // n->fa = x4 / (y4-y0);
+            // n->fb = 0 + 30;
+            // n->fc = 0;
+
+        }else{
+            fitting_gap_x2(n,"liner_x3");
+        }
+
+
+        return true;
+    }
+
+
+    template<typename T>
+    bool fitting_gap_x6(T* n, std::string flag){
+#ifdef MYDEBUG
+std::cout << flag << " ";
+cout_nodeinfo(n);
+#endif
+        // array sites
+        int x4 = n->slotuse - 1;
+        int x2 = x4 >> 1;
+        int x1 = x2 >> 1;
+        int x3 = x2 + x1;
+        int x0 = 0;
+
+
+        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
+        size_t value_base = n->slotkey[x0];
+        int first1 = get_first_1_site(value_gaps) ;
+        int right_move_bits = first1 > 8 ? first1 - 8 : 0;
+        n->value_base = value_base;
+        n->key_move_bits = right_move_bits;
+        // 计算4段数据的斜率
+        auto y0 = static_cast<double>(n->slotkey[x0]);
+        auto y1 = static_cast<double>(n->slotkey[x1]);
+        auto y2 = static_cast<double>(n->slotkey[x2]);
+        auto y3 = static_cast<double>(n->slotkey[x3]);
+        auto y4 = static_cast<double>(n->slotkey[x4]);
+
+        // 计算4段数据的斜率
+        auto ry0 = static_cast<double>((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
+        auto ry1 = static_cast<double>((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
+        auto ry2 = static_cast<double>((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
+        auto ry3 = static_cast<double>((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
+        auto ry4 = static_cast<double>((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
+        // 求k
+        double k0 = (ry1-ry0) / (x1 - x0);
+        double k1 = (ry2-ry1) / (x2 - x1);
+        double k2 = (ry3-ry2) / (x3 - x2);
+        double k3 = (ry4-ry3) / (x4 - x3);
+        double k = (ry4-ry0) / (x4 - x0);
+
+        if(k0>k && k3<k){
+            n->model_type = modelType::GAPX6;
+
+            // double y2x5 = (1/k3)*(1/k3)*(1/k3)*(1/k3)*(1/k3);
+            // double y1x5 = (1/k0)*(1/k0)*(1/k0)*(1/k0)*(1/k0);
+            // n->fb = (y2x5*((ry0+ry1)/2) - y1x5*((ry3+ry4)/2)) / (y1x5-y2x5);
+            // n->fa = k0/std::pow((ry0+ry1)/2+n->fb,5);
+            // n->fc = k0 - n->fa*(n->fb + (ry0+ry1)/2);
+
+            // n->fa = x4 / std::pow(ry4,6);
+            // n->fb = 0;
+            // n->fc = 0;
+
+            n->fa = x2 / (y2-y0);
+            n->fb = 0 - n->fa * y0;
+            n->fc = 0;
+
+            // n->model_type = modelType::GAPX6;
+            // double a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
+            // n->fa = a1;
+            // n->fb = 0 - static_cast<double>(n->fa * y0);
+
+        }else if(k0<k && k3>k){
+            n->model_type = modelType::GAPX6;
+
+            // double y2x5 = (1/k3)*(1/k3)*(1/k3)*(1/k3)*(1/k3);
+            // double y1x5 = (1/k0)*(1/k0)*(1/k0)*(1/k0)*(1/k0);
+            // n->fb = (y2x5*((ry0+ry1)/2) - y1x5*((ry3+ry4)/2)) / (y1x5-y2x5);
+            // n->fa = k0/std::pow((ry0+ry1)/2+n->fb,5);
+            // n->fc = k3 - n->fa*(n->fb + (ry3+ry4)/2);
+
+            // n->fa = - x4 / std::pow(ry4,6);
+            // n->fb = -ry4;
+            // n->fc = x4;
+
+
+            n->fa = x2 / (y4-y2);
+            n->fb = x4 - n->fa * y4;
+            n->fc = 0;
+
+            // n->model_type = modelType::GAPX6;
+            // double a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
+            // n->fa = a1;
+            // n->fb = 0 - static_cast<double>(n->fa * y0);
+
+        }else{
+            fitting_liner(n,"liner_x6");
+        }
+
+
+
+
+
+        find_lower_gapx6(n,0);
+#ifdef MYDEBUG
+
+std::cout <<  n->fa << "*(x+" << n->fb << ")^6 + " << n->fc << "\n";
+
+// std::cout << "bianli ";
+// for(int i=0;i<=ry4;i++){
+//     std::cout << static_cast<size_t>(n->fa * std::pow((i+ n->fb),6) + n->fc) << ",";
+// }
+// std::cout << "\n";
+
+
+std::cout << "youyihou ";
+for(int i=0;i<=x4;i++){
+    size_t tmp = (n->slotkey[i] - n->slotkey[x0]) >> right_move_bits;
+    std::cout << tmp << ",";
+}
+std::cout << "\n";
+
+std::cout << "site ";
+for(int i=0;i<=x4;i++){
+    size_t tmp = i;
+    std::cout << tmp << ",";
+}
+std::cout << "\n";
+
+std::cout << "yingshedesite ";
+for(int i=0;i<=x4;i++){
+    size_t tmp = (n->slotkey[i] - n->slotkey[x0]) >> right_move_bits;
+    std::cout << static_cast<size_t>(n->fa * std::pow((tmp+ n->fb),6) + n->fc) << ",";
+}
+std::cout << "\n";
+
+std::cout << "realdata ";
+for(int i=0;i<=x4;i++){
+    size_t tmp = n->slotkey[i];
+    std::cout << tmp << ",";
+}
+std::cout << "\n";
+
+double a = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
+double b = 0 - static_cast<double>(a * y0);
+
+std::cout << "realdata ";
+for(int i=0;i<=x4;i++){
+    size_t tmp = n->slotkey[i];
+    std::cout << static_cast<size_t>(a*tmp + b) << ",";
+}
+std::cout << "\n";
+
+
+
+size_t line_err=0;
+size_t x6_err=0;
+std::cout << "errorn ";
+for(int i=0;i<=x4;i++){
+    size_t tmp = n->slotkey[i];
+    size_t line_site = static_cast<size_t>(a*tmp + b);
+    size_t tmp1 = (n->slotkey[i] - n->slotkey[x0]) >> right_move_bits;
+    size_t x6_site = static_cast<size_t>(n->fa * std::pow((tmp1 + n->fb),6) + n->fc);
+    size_t real_site = i;
+    line_err += std::max(real_site,line_site) - std::min(real_site,line_site);
+    x6_err += std::max(real_site , x6_site) - std::min(real_site , x6_site);
+}
+std::cout << "\n";
+std::cout << "line_err=" << line_err/x4 << " x6_err=" << x6_err/x4 << "\n";
+
+
+#endif
+
+
+        return true;
+    }
+
+
+    // generate duoxiangshi model
+    template<typename T>
+    bool generate_func_model(T* n){
+        return generate_func_model_integrate(n);
+    }
+
+
+    inline bool compute_integrate(double k1,double k2, double b1, double b2, int x1, int x2,double& up,double& down){
+        if(x1>x2) return 0;
+        double sum=0;
+        double jx;
+
+        jx = (b1-b2)/(k2-k1);
+        if(jx > x1 && jx < x2){
+            sum = (0.5*(k2-k1)*jx*jx  + (b2-b1)*jx) - (0.5*(k2-k1)*x1*x1  + (b2-b1)*x1);
+            sum > 0 ? up = sum : down = -sum;
+            sum = (0.5*(k2-k1)*x2*x2  + (b2-b1)*x2) - (0.5*(k2-k1)*jx*jx  + (b2-b1)*jx);
+            sum > 0 ? up += sum : down += -sum;
+        }else{
+            sum = (0.5*(k2-k1)*x2*x2  + (b2-b1)*x2) - (0.5*(k2-k1)*x1*x1  + (b2-b1)*x1);
+            sum>0 ? up = sum : down = -sum;
+        }
+
+        return true;
+
+    }
+
+
+    // generate duoxiangshi model
+    template<typename T>
+    bool generate_func_model_integrate_bak(T* n){
+        // sure s1 != 0, define 5 site for compute k.
+        if(n->slotuse < 16) {
+            n->model_type = modelType::GENERAL;
+            // fitting_liner(n,"sum_less32");
+            return true;
+        }
+
+        // array sites
+        int xbase = n->slotuse >> 3;
+        int x0 = 0;
+        int x1 = x0  + xbase;
+        int x2 = x1  + xbase;
+        int x3 = x2  + xbase;
+        int x4 = x3  + xbase;
+        int x5 = x4  + xbase;
+        int x6 = x5  + xbase;
+        int x7 = x6  + xbase;
+        int x8 = n->slotuse - 1;
+
+        size_t value_gaps = n->slotkey[x8] - n->slotkey[x0];
+        // size_t value_base = n->slotkey[x0];
+        double reduce_x = static_cast<double>(value_gaps) / 256.0;
+
+        // 计算4段数据的斜率
+        auto ry0 = static_cast<double>(n->slotkey[x0] - n->slotkey[x0]) / reduce_x;
+        auto ry1 = static_cast<double>(n->slotkey[x1] - n->slotkey[x0]) / reduce_x;
+        auto ry2 = static_cast<double>(n->slotkey[x2] - n->slotkey[x0]) / reduce_x;
+        auto ry3 = static_cast<double>(n->slotkey[x3] - n->slotkey[x0]) / reduce_x;
+        auto ry4 = static_cast<double>(n->slotkey[x4] - n->slotkey[x0]) / reduce_x;
+        auto ry5 = static_cast<double>(n->slotkey[x5] - n->slotkey[x0]) / reduce_x;
+        auto ry6 = static_cast<double>(n->slotkey[x6] - n->slotkey[x0]) / reduce_x;
+        auto ry7 = static_cast<double>(n->slotkey[x7] - n->slotkey[x0]) / reduce_x;
+        auto ry8 = static_cast<double>(n->slotkey[x8] - n->slotkey[x0]) / reduce_x;
+
+
+        // double ratio = (y4-y0) / x4;
+
+        // double ry0 = 0;
+        // double ry1 = (y1-y0)/ratio;
+        // double ry2 = (y2-y0)/ratio;
+        // double ry3 = (y3-y0)/ratio;
+        // double ry4 = (y4-y0)/ratio;
+
+        // 求k
+        double k0 = (ry1-ry0) / (x1 - x0);
+        double k1 = (ry2-ry1) / (x2 - x1);
+        double k2 = (ry3-ry2) / (x3 - x2);
+        double k3 = (ry4-ry3) / (x4 - x3);
+        double k4 = (ry5-ry4) / (x5 - x4);
+        double k5 = (ry6-ry5) / (x6 - x5);
+        double k6 = (ry7-ry6) / (x7 - x6);
+        double k7 = (ry8-ry7) / (x8 - x7);
+        double k = (ry8-ry0) / (x8 - x0);
+
+        double b0 = ry0-k0*x0;
+        double b1 = ry1-k1*x1;
+        double b2 = ry2-k2*x2;
+        double b3 = ry3-k3*x3;
+        double b4 = ry4-k4*x4;
+        double b5 = ry5-k5*x5;
+        double b6 = ry6-k6*x6;
+        double b7 = ry7-k7*x7;
+        double b = ry0-k*x0;
+
+        double up_sum=0,down_sum=0;
+        double up=0,down=0;
+        compute_integrate(k, k0, b, b0, x0, x1, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k1, b, b1, x1, x2, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k2, b, b2, x2, x3, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k3, b, b3, x3, x4, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k4, b, b4, x4, x5, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k5, b, b5, x5, x6, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k6, b, b6, x6, x7, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k7, b, b7, x7, x8, up, down);
+        up_sum+=up; down_sum+=down;
+        // std::cout << "k = " << k << "\n";
+        // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
+
+        if(up_sum == 0 && down_sum>0){
+            if(down_sum > (ry8*78)){
+                fitting_gap_x6(n,"x6");
+            }
+            // else if(down_sum > (ry8*55)){
+            //     fitting_gap_x3(n,"x3");
+            // }
+
+
+        }else if(down_sum == 0 && up_sum>0){
+            if(up_sum > (ry8*78)){
+                fitting_gap_x6(n,"x6");
+            }
+            // else if(up_sum > (ry8*55)){
+            //     fitting_gap_x3(n,"x3");
+            // }
+
+
+        }else{
+            fitting_liner(n,"sum_" + std::to_string(static_cast<int>((up_sum+down_sum)/ry8)));
+        }
+            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>((up_sum+down_sum)/ry8)));
+
+        // if(sum < (ry8*16)){
+        //     fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+        // }else if(sum < (ry8*32)){
+        //     fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+        // }
+        // else if(sum < (ry8*55)){
+        //     // fitting_gap_x2(n,"x2");
+        //     fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+        // }
+        // else if(sum < (ry8*78)){
+        //     fitting_gap_x3(n,"x3");
+        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
+        // }
+        // else{
+        //     fitting_gap_x6(n,"x6");
+        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
+        // }
+        
+
+
+
+        n->insert_count = 0;
+        n->delete_count = 0;
+        return true;
+    }
+
+
+    // generate duoxiangshi model
+    template<typename T>
+    bool generate_func_model_integrate(T* n){
+        // sure s1 != 0, define 5 site for compute k.
+        if(n->slotuse < 16) {
+            n->model_type = modelType::GENERAL;
+            // fitting_liner(n,"sum_less32");
+            return true;
+        }
+
+        // array sites
+        int xbase = n->slotuse >> 3;
+        int x0 = 0;
+        int x1 = x0  + xbase;
+        int x2 = x1  + xbase;
+        int x3 = x2  + xbase;
+        int x4 = x3  + xbase;
+        int x5 = x4  + xbase;
+        int x6 = x5  + xbase;
+        int x7 = x6  + xbase;
+        int x8 = n->slotuse - 1;
+
+        size_t value_gaps = n->slotkey[x8] - n->slotkey[x0];
+        // size_t value_base = n->slotkey[x0];
+        double reduce_x = static_cast<double>(value_gaps) / 256.0;
+
+        // 计算4段数据的斜率
+        auto ry0 = static_cast<double>(n->slotkey[x0] - n->slotkey[x0]) / reduce_x;
+        auto ry1 = static_cast<double>(n->slotkey[x1] - n->slotkey[x0]) / reduce_x;
+        auto ry2 = static_cast<double>(n->slotkey[x2] - n->slotkey[x0]) / reduce_x;
+        auto ry3 = static_cast<double>(n->slotkey[x3] - n->slotkey[x0]) / reduce_x;
+        auto ry4 = static_cast<double>(n->slotkey[x4] - n->slotkey[x0]) / reduce_x;
+        auto ry5 = static_cast<double>(n->slotkey[x5] - n->slotkey[x0]) / reduce_x;
+        auto ry6 = static_cast<double>(n->slotkey[x6] - n->slotkey[x0]) / reduce_x;
+        auto ry7 = static_cast<double>(n->slotkey[x7] - n->slotkey[x0]) / reduce_x;
+        auto ry8 = static_cast<double>(n->slotkey[x8] - n->slotkey[x0]) / reduce_x;
+
+
+        // double ratio = (y4-y0) / x4;
+
+        // double ry0 = 0;
+        // double ry1 = (y1-y0)/ratio;
+        // double ry2 = (y2-y0)/ratio;
+        // double ry3 = (y3-y0)/ratio;
+        // double ry4 = (y4-y0)/ratio;
+
+        // 求k
+        double k0 = (ry1-ry0) / (x1 - x0);
+        double k1 = (ry2-ry1) / (x2 - x1);
+        double k2 = (ry3-ry2) / (x3 - x2);
+        double k3 = (ry4-ry3) / (x4 - x3);
+        double k4 = (ry5-ry4) / (x5 - x4);
+        double k5 = (ry6-ry5) / (x6 - x5);
+        double k6 = (ry7-ry6) / (x7 - x6);
+        double k7 = (ry8-ry7) / (x8 - x7);
+        double k = (ry8-ry0) / (x8 - x0);
+
+        double b0 = ry0-k0*x0;
+        double b1 = ry1-k1*x1;
+        double b2 = ry2-k2*x2;
+        double b3 = ry3-k3*x3;
+        double b4 = ry4-k4*x4;
+        double b5 = ry5-k5*x5;
+        double b6 = ry6-k6*x6;
+        double b7 = ry7-k7*x7;
+        double b = ry0-k*x0;
+
+        double up_sum=0,down_sum=0;
+        double up=0,down=0;
+        compute_integrate(k, k0, b, b0, x0, x1, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k1, b, b1, x1, x2, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k2, b, b2, x2, x3, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k3, b, b3, x3, x4, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k4, b, b4, x4, x5, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k5, b, b5, x5, x6, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k6, b, b6, x6, x7, up, down);
+        up_sum+=up; down_sum+=down;
+        compute_integrate(k, k7, b, b7, x7, x8, up, down);
+        up_sum+=up; down_sum+=down;
+        // std::cout << "k = " << k << "\n";
+        // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
+
+        if(up_sum == 0 && down_sum>0){
+            if(down_sum > (ry8*78)){
+                fitting_gap_x6(n,"x6");
+            }
+            // else if(down_sum > (ry8*55)){
+            //     fitting_gap_x3(n,"x3");
+            // }
+
+
+        }else if(down_sum == 0 && up_sum>0){
+            if(up_sum > (ry8*78)){
+                fitting_gap_x6(n,"x6");
+            }
+            // else if(up_sum > (ry8*55)){
+            //     fitting_gap_x3(n,"x3");
+            // }
+
+
+        }else{
+            fitting_liner(n,"sum_" + std::to_string(static_cast<int>((up_sum+down_sum)/ry8)));
+        }
+            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>((up_sum+down_sum)/ry8)));
+
+        // if(sum < (ry8*16)){
+        //     fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+        // }else if(sum < (ry8*32)){
+        //     fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+        // }
+        // else if(sum < (ry8*55)){
+        //     // fitting_gap_x2(n,"x2");
+        //     fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+        // }
+        // else if(sum < (ry8*78)){
+        //     fitting_gap_x3(n,"x3");
+        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
+        // }
+        // else{
+        //     fitting_gap_x6(n,"x6");
+        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
+        // }
+        
+
+
+
+        n->insert_count = 0;
+        n->delete_count = 0;
+        return true;
+    }
 
 
 
@@ -2957,67 +3204,44 @@ public:
     {
         node* n = m_root;
         if (!n) return end();
-
+        btree_level=0;
         while (!n->isleafnode())
         {
             const inner_node* inner = static_cast<const inner_node*>(n);
             int slot = find_lower(inner, key);
-
             n = inner->childid[slot];
+            btree_level++;
         }
-
         leaf_node* leaf = static_cast<leaf_node*>(n);
-
         int slot = find_lower(leaf, key);
-        return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
-               ? iterator(leaf, slot) : end();
+        return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot])) ? iterator(leaf, slot) : end();
     }
 
     int btree_level;
+
     size_t* find_x(const key_type& key)
     {
         btree_level = 0;
         node* n = m_root;
-        // if (!n) return end();
         if (!n) return nullptr;
-        // key_type min_key ;
-        // key_type max_key ;
-        // if(n->isleafnode()){
-        //     const leaf_node* innert = static_cast<const leaf_node*>(n);
-        //     min_key = innert->minkey();
-        //     max_key = innert->maxkey();
-        // }else{
-        //     const inner_node* innert = static_cast<const inner_node*>(n);
-        //     min_key = innert->minkey();
-        //     max_key = innert->maxkey();
-        // }
-
-        // bool is_max_min = true;
 
         while (!n->isleafnode())
         {
             const inner_node* inner = static_cast<const inner_node*>(n);
-            // auto currentTime1 = std::chrono::high_resolution_clock::now();
-            int slot = find_lower_x(inner, key);
-            // auto currentTime2 = std::chrono::high_resolution_clock::now();
-            // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-            // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-            // level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
-            btree_level++;
-
+            int slot;
+            if(btree_level==0){
+                slot = find_lower_liner(inner,key);
+            }else{
+                slot = find_lower_x(inner, key);
+            }
             n = inner->childid[slot];
+            btree_level++;
         }
 
         leaf_node* leaf = static_cast<leaf_node*>(n);
         // auto currentTime1 = std::chrono::high_resolution_clock::now();
         int slot = find_lower_x(leaf, key);
-        // auto currentTime2 = std::chrono::high_resolution_clock::now();
-        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        // level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
-        
-        // return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
-        //        ? iterator(leaf, slot) : end();
+
         return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
                ? &(leaf->slotdata[slot]) : nullptr;
     }
@@ -3027,51 +3251,22 @@ public:
         btree_level = 0;
         node* n = m_root;
         if (!n) return end();
-        // key_type min_key ;
-        // key_type max_key ;
-        // if(n->isleafnode()){
-        //     const leaf_node* innert = static_cast<const leaf_node*>(n);
-        //     min_key = innert->minkey();
-        //     max_key = innert->maxkey();
-        // }else{
-        //     const inner_node* innert = static_cast<const inner_node*>(n);
-        //     min_key = innert->minkey();
-        //     max_key = innert->maxkey();
-        // }
-
-        // bool is_max_min = true;
 
         while (!n->isleafnode())
         {
             const inner_node* inner = static_cast<const inner_node*>(n);
-#ifdef TIMING
-            auto currentTime1 = std::chrono::high_resolution_clock::now();
-#endif
+
             int slot = find_lower_line(inner, key);
-#ifdef TIMING
-            // auto currentTime2 = std::chrono::high_resolution_clock::now();
-#endif
+
             n = inner->childid[slot];
-            #ifdef TIMING
-            // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-            // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-            // level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
-            #endif
+
             btree_level++;
         }
 
         leaf_node* leaf = static_cast<leaf_node*>(n);
-        #ifdef TIMING
-        auto currentTime1 = std::chrono::high_resolution_clock::now();
-        #endif
+
 
         int slot = find_lower_line(leaf, key);
-        #ifdef TIMING
-        auto currentTime2 = std::chrono::high_resolution_clock::now();
-        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
-        #endif
 
         return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
                ? iterator(leaf, slot) : end();
@@ -3099,34 +3294,34 @@ public:
         while (!n->isleafnode())
         {
             const inner_node* inner = static_cast<const inner_node*>(n);
-#ifdef TIMING
-            auto currentTime1 = std::chrono::high_resolution_clock::now();
-#endif
+// #ifdef TIMING
+//             auto currentTime1 = std::chrono::high_resolution_clock::now();
+// #endif
             int slot = find_lower_l(inner, key);
-#ifdef TIMING
-            // auto currentTime2 = std::chrono::high_resolution_clock::now();
-#endif
+// #ifdef TIMING
+//             // auto currentTime2 = std::chrono::high_resolution_clock::now();
+// #endif
             n = inner->childid[slot];
-            #ifdef TIMING
-            // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-            // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-            // level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
-            #endif
+            // #ifdef TIMING
+            // // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+            // // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+            // // level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
+            // #endif
             btree_level++;
         }
 
         leaf_node* leaf = static_cast<leaf_node*>(n);
-        #ifdef TIMING
-        auto currentTime1 = std::chrono::high_resolution_clock::now();
-        #endif
+        // #ifdef TIMING
+        // auto currentTime1 = std::chrono::high_resolution_clock::now();
+        // #endif
 
         int slot = find_lower_l(leaf, key);
-        #ifdef TIMING
-        auto currentTime2 = std::chrono::high_resolution_clock::now();
-        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
-        #endif
+        // #ifdef TIMING
+        // auto currentTime2 = std::chrono::high_resolution_clock::now();
+        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        // level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
+        // #endif
 
         return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
                ? iterator(leaf, slot) : end();
@@ -3138,7 +3333,6 @@ public:
     {
         const node* n = m_root;
         if (!n) return end();
-
         while (!n->isleafnode())
         {
             const inner_node* inner = static_cast<const inner_node*>(n);
@@ -3605,1328 +3799,6 @@ private:
         return r;
     }
 
-
-    template<typename T>
-    void cout_nodeinfo(const T* n) const{
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-        // 计算4段数据的斜率
-        auto y0 = static_cast<double>(n->slotkey[x0]);
-        auto y1 = static_cast<double>(n->slotkey[x1]);
-        auto y2 = static_cast<double>(n->slotkey[x2]);
-        auto y3 = static_cast<double>(n->slotkey[x3]);
-        auto y4 = static_cast<double>(n->slotkey[x4]);
-
-        int m0 = (x1 + x0)>>1;
-        int m1 = (x2 + x1)>>1;
-        int m2 = (x3 + x2)>>1;
-        int m3 = (x4 + x3)>>1;
-
-        auto my0 = static_cast<double>(n->slotkey[m0]);
-        auto my1 = static_cast<double>(n->slotkey[m1]);
-        auto my2 = static_cast<double>(n->slotkey[m2]);
-        auto my3 = static_cast<double>(n->slotkey[m3]);
-
-        // 求k
-        double k0 = ((y1-y0) / (x1 - x0) + (my0-y0)/(m0-x0))/2;
-        double k1 = ((y2-y1) / (x2 - x1) + (my1-y1)/(m1-x1))/2;
-        double k2 = ((y3-y2) / (x3 - x2) + (my2-y2)/(m2-x2))/2;
-        double k3 = ((y4-y3) / (x4 - x3) + (my3-y3)/(m3-x3))/2;
-
-        // double fa = (x4-x0) / (y4-0);
-        double left_kk  = k1-k0>0 ? k1/k0-1 : -k0/k1+1;
-        double mid_kk   = k2-k1>0 ? k2/k1-1 : -k1/k2+1;
-        double right_kk = k3-k2>0 ? k3/k2-1 : -k2/k3+1;
-        std::cout << "k0-k3 " << k0 << " " << k1 << " " << k2 << " " << k3 << " | ";
-        std::cout << "kk " << left_kk << " " << mid_kk << " " << right_kk << " | ";
-        std::cout << "data_is ";
-        for(int i=0;i<n->slotuse;i++){
-            std::cout << n->slotkey[i] << ",";
-        }
-        std::cout << "\n";
-    }
-
-    template<typename T>
-    int  check_fitting(T* n, size_t & line_err, size_t & errs){
-        int len = n->slotuse;
-        for(int i=0;i<len;i++){
-            size_t e = n->slotkey[i];
-            int site1 = n->fa * e + n->fd + n->fb * sin((e - n->fe) * n->fc  );
-            // int site1 = n->fa * e + n->fd;
-            int site2 = (n->fa * e) + n->fd;
-            int site3 = find_lower(n,e);
-            line_err += abs(site2-site3);
-            errs += abs(site1-site3);
-        }
-
-        line_err /= len;
-        errs /= len;
-
-        return 0;
-    }
-
-    template<typename T>
-    int  check_fitting_x4(T* n, size_t & line_err, size_t & errs){
-        int len = n->slotuse;
-        for(int i=0;i<len;i++){
-            int lo=0,hi=n->slotuse;
-            size_t e = n->slotkey[i];
-            int site1 ;
-            // = n->fa * e + n->fd + n->fb * sin((e - n->fe) * n->fc  );
-            while(lo < hi){
-                int mid = (lo+hi) >> 1;
-                auto ry = n->fa*table_x4[mid] + n->fb*table_x3[mid] + n->fc*table_x2[mid] +n->fd*mid + n->fe;
-                if (e <= static_cast<size_t>(ry)){
-                    hi = mid;
-                }else{
-                    lo = mid+1;
-                }
-            }
-            site1 = lo;
-
-            // int site1 = n->fa * e + n->fd;
-            int site2 = (n->fa * e) + n->fd;
-            int site3 = find_lower(n,e);
-            line_err += abs(site2-site3);
-            errs += abs(site1-site3);
-        }
-
-        line_err /= len;
-        errs /= len;
-
-        return 0;
-    }
-
-
-    size_t get_lt1024(size_t a, int& i){
-        size_t tmp = a;
-        i = 0;
-        while(tmp >> 8){
-            tmp >>= 8;
-            i+=8;
-        }
-        while(tmp >> 1){
-            tmp >>=1;
-            i++;
-        }
-
-        return a >> (1-10 > 0 ? i-10 : 0);
-
-    }
-
-    int get_first_1_site(size_t a){
-        size_t tmp = a;
-        int i = 0;
-        while(tmp >> 8){
-            tmp >>= 8;
-            i+=8;
-        }
-        while(tmp >> 1){
-            tmp >>=1;
-            i++;
-        }
-
-        return i;
-
-    }
-
-    // std::vector<std::vector<double>> get_inverse(std::vector<std::vector<double>> input){
-    //     Eigen::MatrixXd m(4,4);
-    //     for(int i=0;i<4;i++){
-    //         for(int j=0;j<4;j++){
-    //             m(i,j) = input[i][j];
-    //         }
-    //     }
-    //     auto res = m.inverse();
-    //     std::vector<std::vector<double>> output(4,std::vector<double>(4));
-    //     for(int i=0;i<4;i++){
-    //         for(int j=0;j<4;j++){
-    //             output[i][j] = res(i,j);
-    //         }
-    //     }
-
-    //     return output;
-
-    // }
-
-
-    template<typename T>
-    bool fitting_liner_int(T* n, std::string flag){
-#ifdef MYDEBUG
-std::cout <<  flag << " ";
-cout_nodeinfo(n);
-#endif
-        n->model_type = modelType::LINE_INT;
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-        // 计算4段数据的斜率
-        size_t y0 = (n->slotkey[x0]);
-        size_t y1 = (n->slotkey[x1]);
-        size_t y2 = (n->slotkey[x2]);
-        size_t y3 = (n->slotkey[x3]);
-        size_t y4 = (n->slotkey[x4]);
-
-        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
-        size_t value_base = n->slotkey[x0];
-        n->value_base = value_base;
-        int first1 = get_first_1_site(value_gaps) ;
-        int right_move_bits = first1 > 8 ? first1 - 8 : 0;
-        n->key_move_bits = right_move_bits;
-
-        // 计算4段数据的斜率
-        size_t ry0 = ((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
-        size_t ry1 = ((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
-        size_t ry2 = ((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
-        size_t ry3 = ((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
-        size_t ry4 = ((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
-        // 求k
-        // double k0 = (ry1-ry0) / (x1 - x0);
-        // double k1 = (ry2-ry1) / (x2 - x1);
-        // double k2 = (ry3-ry2) / (x3 - x2);
-        // double k3 = (ry4-ry3) / (x4 - x3);
-        size_t k =   ((x4 - x0)<<20) / (ry4-ry0);
-
-        // std::vector<DataPoint> input = {{x0,y0},{x1,y1},{x2,y2},{x3,y3},{x4,y4}};
-        // std::pair<double,double> r = LinearRegressionModelTrain(input);
-        // n->fa = r.first;
-        // n->fb = r.second;
-
-        // fitting
-        n->fa = static_cast<double>(k);
-        n->fb = 0;
-
-
-
-        return true;
-    }
-
-    template<typename T>
-    bool fitting_liner(T* n, std::string flag){
-#ifdef MYDEBUG
-std::cout <<  flag << " ";
-cout_nodeinfo(n);
-#endif
-        n->model_type = modelType::LINE;
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-        // 计算4段数据的斜率
-        auto y0 = static_cast<double>(n->slotkey[x0]);
-        auto y1 = static_cast<double>(n->slotkey[x1]);
-        auto y2 = static_cast<double>(n->slotkey[x2]);
-        auto y3 = static_cast<double>(n->slotkey[x3]);
-        auto y4 = static_cast<double>(n->slotkey[x4]);
-
-        // std::vector<DataPoint> input = {{x0,y0},{x1,y1},{x2,y2},{x3,y3},{x4,y4}};
-        // std::pair<double,double> r = LinearRegressionModelTrain(input);
-        // n->fa = r.first;
-        // n->fb = r.second;
-
-        // fitting
-        double a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-        n->fa = a1;
-        n->fb = 0 - static_cast<double>(n->fa * y0);
-
-
-
-        return true;
-    }
-
-    template<typename T>
-    bool fitting_x2(T* n, std::string flag){
-#ifdef MYDEBUG
-std::cout << flag << " ";
-cout_nodeinfo(n);
-#endif
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-        // 计算4段数据的斜率
-        auto y0 = static_cast<double>(n->slotkey[x0]);
-        auto y1 = static_cast<double>(n->slotkey[x1]);
-        auto y2 = static_cast<double>(n->slotkey[x2]);
-        auto y3 = static_cast<double>(n->slotkey[x3]);
-        auto y4 = static_cast<double>(n->slotkey[x4]);
-
-
-        // 求k
-        double k0 = (y1-y0) / (x1 - x0);
-        double k1 = (y2-y1) / (x2 - x1);
-        double k2 = (y3-y2) / (x3 - x2);
-        double k3 = (y4-y3) / (x4 - x3);
-
-
-        // fitting y = x^n + b
-        n->model_type = modelType::X2;
-        n->fc = y0;
-        n->fa = (y4 - y0)/(x4*x4);
-        n->fb = 0;
-
-        // n->fa = 0.5*((k3-k0)/(x4));
-        // n->fb = k0/(2*n->fa) - 0;
-        // n->fc = y0 - n->fa * (x0+n->fb)*(x0+n->fb);
-
-
-
-        // if(flag != "x2_aaa"){
-            // fitting_liner(n,flag);
-        // }
-        return true;
-    }
-
-    template<typename T>
-    bool fitting_x2r(T* n, std::string flag){
-
-#ifdef MYDEBUG
-std::cout << flag << " ";
-cout_nodeinfo(n);
-#endif
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-        // 计算4段数据的斜率
-        auto y0 = static_cast<double>(n->slotkey[x0]);
-        auto y1 = static_cast<double>(n->slotkey[x1]);
-        auto y2 = static_cast<double>(n->slotkey[x2]);
-        auto y3 = static_cast<double>(n->slotkey[x3]);
-        auto y4 = static_cast<double>(n->slotkey[x4]);
-
-        // 求k
-        double k0 = (y1-y0) / (x1 - x0);
-        double k1 = (y2-y1) / (x2 - x1);
-        double k2 = (y3-y2) / (x3 - x2);
-        double k3 = (y4-y3) / (x4 - x3);
-
-
-        // fitting y = x^n + b
-        n->model_type = modelType::X2;
-        n->fb = -x4;
-        n->fc = y4;
-        n->fa = (y0 - n->fc) / (n->fb*n->fb);
-
-        // n->fa = 0.5*((k3-k0)/(x4));
-        // n->fb = k0/(2*n->fa) - 0;
-        // n->fc = y4 - n->fa * (x4+n->fb)*(x4+n->fb);
-
-        // if(flag != "x2_ttt"){
-            // fitting_liner(n,flag);
-        // }
-        return true;
-    }
-
-    template<typename T>
-    bool fitting_x3(T* n, std::string flag){
-        fitting_liner(n,flag);
-#ifdef MYDEBUG
-std::cout << flag << " ";
-cout_nodeinfo(n);
-#endif
-        return true;
-    }
-
-    template<typename T>
-    bool fitting_x3r(T* n, std::string flag){
-        fitting_liner(n,flag);
-#ifdef MYDEBUG
-std::cout << flag << " ";
-cout_nodeinfo(n);
-#endif
-        return true;
-    }
-
-    template<typename T>
-    bool fitting_x4(T* n, std::string flag){
-        fitting_liner(n,flag);
-#ifdef MYDEBUG
-std::cout << flag << " ";
-cout_nodeinfo(n);
-#endif
-        return true;
-    }
-
-    template<typename T>
-    bool fitting_x4r(T* n, std::string flag){
-        fitting_liner(n,flag);
-#ifdef MYDEBUG
-std::cout << flag << " ";
-cout_nodeinfo(n);
-#endif
-        return true;
-    }
-
-    template<typename T>
-    bool fitting_other(T* n, std::string flag){
-        fitting_liner(n,flag);
-#ifdef MYDEBUG
-std::cout << flag << " ";
-cout_nodeinfo(n);
-#endif
-        return true;
-    }
-
-
-    template<typename T>
-    bool fitting_gap_x6(T* n, std::string flag){
-#ifdef MYDEBUG
-std::cout << flag << " ";
-cout_nodeinfo(n);
-#endif
-
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-
-        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
-        size_t value_base = n->slotkey[x0];
-        n->value_base = value_base;
-        int first1 = get_first_1_site(value_gaps) ;
-        int right_move_bits = first1 > 7 ? first1 - 7 : 0;
-        n->key_move_bits = right_move_bits;
-        // 计算4段数据的斜率
-        auto y0 = static_cast<double>(n->slotkey[x0]);
-        auto y1 = static_cast<double>(n->slotkey[x1]);
-        auto y2 = static_cast<double>(n->slotkey[x2]);
-        auto y3 = static_cast<double>(n->slotkey[x3]);
-        auto y4 = static_cast<double>(n->slotkey[x4]);
-
-        // 计算4段数据的斜率
-        auto ry0 = static_cast<double>((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
-        auto ry1 = static_cast<double>((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
-        auto ry2 = static_cast<double>((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
-        auto ry3 = static_cast<double>((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
-        auto ry4 = static_cast<double>((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
-        // 求k
-        double k0 = (ry1-ry0) / (x1 - x0);
-        double k1 = (ry2-ry1) / (x2 - x1);
-        double k2 = (ry3-ry2) / (x3 - x2);
-        double k3 = (ry4-ry3) / (x4 - x3);
-        double k = (ry4-ry0) / (x4 - x0);
-
-        if(k0+k1 > (k2+k3)){
-            n->model_type = modelType::GAPX6;
-
-            // double y2x5 = (1/k3)*(1/k3)*(1/k3)*(1/k3)*(1/k3);
-            // double y1x5 = (1/k0)*(1/k0)*(1/k0)*(1/k0)*(1/k0);
-            // n->fb = (y2x5*((ry0+ry1)/2) - y1x5*((ry3+ry4)/2)) / (y1x5-y2x5);
-            // n->fa = k0/std::pow((ry0+ry1)/2+n->fb,5);
-            // n->fc = k0 - n->fa*(n->fb + (ry0+ry1)/2);
-
-            n->fa = x4 / std::pow(ry4,6);
-            n->fb = 0;
-            n->fc = 0;
-        }else if((k0+k1) < (k2+k3)){
-            n->model_type = modelType::GAPX6;
-
-            // double y2x5 = (1/k3)*(1/k3)*(1/k3)*(1/k3)*(1/k3);
-            // double y1x5 = (1/k0)*(1/k0)*(1/k0)*(1/k0)*(1/k0);
-            // n->fb = (y2x5*((ry0+ry1)/2) - y1x5*((ry3+ry4)/2)) / (y1x5-y2x5);
-            // n->fa = k0/std::pow((ry0+ry1)/2+n->fb,5);
-            // n->fc = k3 - n->fa*(n->fb + (ry3+ry4)/2);
-
-            n->fa = - x4 / std::pow(ry4,6);
-            n->fb = -ry4;
-            n->fc = x4;
-        }else{
-            fitting_liner(n,"liner_x6");
-        }
-
-        find_lower_gapx6(n,0);
-#ifdef MYDEBUG
-
-std::cout <<  n->fa << "*(x+" << n->fb << ")^6 + " << n->fc << "\n";
-
-// std::cout << "bianli ";
-// for(int i=0;i<=ry4;i++){
-//     std::cout << static_cast<size_t>(n->fa * std::pow((i+ n->fb),6) + n->fc) << ",";
-// }
-// std::cout << "\n";
-
-
-std::cout << "youyihou ";
-for(int i=0;i<=x4;i++){
-    size_t tmp = (n->slotkey[i] - n->slotkey[x0]) >> right_move_bits;
-    std::cout << tmp << ",";
-}
-std::cout << "\n";
-
-std::cout << "site ";
-for(int i=0;i<=x4;i++){
-    size_t tmp = i;
-    std::cout << tmp << ",";
-}
-std::cout << "\n";
-
-std::cout << "yingshedesite ";
-for(int i=0;i<=x4;i++){
-    size_t tmp = (n->slotkey[i] - n->slotkey[x0]) >> right_move_bits;
-    std::cout << static_cast<size_t>(n->fa * std::pow((tmp+ n->fb),6) + n->fc) << ",";
-}
-std::cout << "\n";
-
-std::cout << "realdata ";
-for(int i=0;i<=x4;i++){
-    size_t tmp = n->slotkey[i];
-    std::cout << tmp << ",";
-}
-std::cout << "\n";
-
-double a = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-double b = 0 - static_cast<double>(a * y0);
-
-std::cout << "realdata ";
-for(int i=0;i<=x4;i++){
-    size_t tmp = n->slotkey[i];
-    std::cout << static_cast<size_t>(a*tmp + b) << ",";
-}
-std::cout << "\n";
-
-
-
-size_t line_err=0;
-size_t x6_err=0;
-std::cout << "errorn ";
-for(int i=0;i<=x4;i++){
-    size_t tmp = n->slotkey[i];
-    size_t line_site = static_cast<size_t>(a*tmp + b);
-    size_t tmp1 = (n->slotkey[i] - n->slotkey[x0]) >> right_move_bits;
-    size_t x6_site = static_cast<size_t>(n->fa * std::pow((tmp1 + n->fb),6) + n->fc);
-    size_t real_site = i;
-    line_err += std::max(real_site,line_site) - std::min(real_site,line_site);
-    x6_err += std::max(real_site , x6_site) - std::min(real_site , x6_site);
-}
-std::cout << "\n";
-std::cout << "line_err=" << line_err/x4 << " x6_err=" << x6_err/x4 << "\n";
-
-
-
-
-#endif
-
-
-        return true;
-    }
-
-
-    template<typename T>
-    bool fitting_gap_x2(T* n, std::string flag){
-#ifdef MYDEBUG
-std::cout << flag << " ";
-cout_nodeinfo(n);
-#endif
-
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-
-        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
-        size_t value_base = n->slotkey[x0];
-        int first1 = get_first_1_site(value_gaps) ;
-        int right_move_bits = first1 > 8 ? first1 - 8 : 0;
-        
-        // 计算4段数据的斜率
-        auto ry0 = static_cast<double>((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
-        auto ry1 = static_cast<double>((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
-        auto ry2 = static_cast<double>((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
-        auto ry3 = static_cast<double>((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
-        auto ry4 = static_cast<double>((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
-        // 求k
-        double k0 = (ry1-ry0) / (x1 - x0);
-        double k1 = (ry2-ry1) / (x2 - x1);
-        double k2 = (ry3-ry2) / (x3 - x2);
-        double k3 = (ry4-ry3) / (x4 - x3);
-        double k = (ry4-ry0) / (x4 - x0);
-
-        if(k0 > k && k3 < k){
-            n->model_type = modelType::GAPX2;
-
-
-            n->fa = x4 / (ry4*ry4);
-            n->fb = 0;
-            n->fc = 0;
-
-            // n->fa = 0.5*((k3-k0) / (ry3-ry0));
-            // n->fb = k0/(2*n->fa) - ry1;
-            // n->fc = x0 - n->fa *(ry0+n->fb)*(ry0+n->fb);
-        }else if(k0 < k && k3 >k){
-            n->model_type = modelType::GAPX2;
-            n->fa = - x4 /  (ry4*ry4);
-            n->fb = -ry4;
-            n->fc = x4;
-
-            // n->fa = 0.5*((k3-k0) / (ry3-ry0));
-            // n->fb = k0/(2*n->fa) - ry1;
-            // n->fc = x4 - n->fa *(ry4+n->fb)*(ry4+n->fb);
-
-        }else{
-            fitting_liner(n,"liner_x2");
-        }
-
-
-        return true;
-    }
-
-
-    template<typename T>
-    bool fitting_gap_x3(T* n, std::string flag){
-#ifdef MYDEBUG
-std::cout << flag << " ";
-cout_nodeinfo(n);
-#endif
-
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-
-        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
-        size_t value_base = n->slotkey[x0];
-        int first1 = get_first_1_site(value_gaps) ;
-        int right_move_bits = first1 > 8 ? first1 - 8 : 0;
-        
-        // 计算4段数据的斜率
-        auto ry0 = static_cast<double>((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
-        auto ry1 = static_cast<double>((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
-        auto ry2 = static_cast<double>((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
-        auto ry3 = static_cast<double>((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
-        auto ry4 = static_cast<double>((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
-        // 求k
-        double k0 = (ry1-ry0) / (x1 - x0);
-        double k1 = (ry2-ry1) / (x2 - x1);
-        double k2 = (ry3-ry2) / (x3 - x2);
-        double k3 = (ry4-ry3) / (x4 - x3);
-        double k = (ry4-ry0) / (x4 - x0);
-
-        if(k0 > k && k3 < k){
-            n->model_type = modelType::GAPX3;
-            n->fa = x4 / std::pow(ry4,3);
-            n->fb = 0;
-            n->fc = 0;
-        }else if(k0 < k && k3 >k){
-            n->model_type = modelType::GAPX3;
-            n->fa = - x4 / std::pow(ry4,3);
-            n->fb = -ry4;
-            n->fc = x4;
-        }else{
-            fitting_liner(n,"liner_x3");
-        }
-
-
-        return true;
-    }
-
-
-    // generate duoxiangshi model
-    template<typename T>
-    bool generate_func_model(T* n){
-        return generate_func_model_integrate(n);
-    }
-
-
-    inline double compute_integrate(double k1,double k2, double b1, double b2, int x1, int x2){
-        if(x1>x2) return 0;
-        double sum=0;
-        double jx;
-
-        jx = (b1-b2)/(k2-k1);
-        if(jx > x1 && jx < x2){
-            sum += fabs((0.5*(k2-k1)*jx*jx  + (b2-b1)*jx) - (0.5*(k2-k1)*x1*x1  + (b2-b1)*x1));
-            sum += fabs((0.5*(k2-k1)*x2*x2  + (b2-b1)*x2) - (0.5*(k2-k1)*jx*jx  + (b2-b1)*jx));
-        }else{
-            sum = fabs((0.5*(k2-k1)*x2*x2  + (b2-b1)*x2) - (0.5*(k2-k1)*x1*x1  + (b2-b1)*x1));
-        }
-
-        return sum;
-
-    }
-
-
-    // generate duoxiangshi model
-    template<typename T>
-    bool generate_func_model_integrate(T* n){
-        // sure s1 != 0, define 5 site for compute k.
-        if(n->slotuse < 32) {
-            n->model_type = modelType::GENERAL;
-            return true;
-        }
-
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-
-        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
-        size_t value_base = n->slotkey[x0];
-        int first1 = get_first_1_site(value_gaps) ;
-        int right_move_bits = first1 > 8 ? first1 - 8 : 0;
-        n->key_move_bits = right_move_bits;
-        n->value_base = value_base;
-        
-        // 计算4段数据的斜率
-        auto ry0 = static_cast<double>((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
-        auto ry1 = static_cast<double>((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
-        auto ry2 = static_cast<double>((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
-        auto ry3 = static_cast<double>((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
-        auto ry4 = static_cast<double>((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
-
-
-        // double ratio = (y4-y0) / x4;
-
-        // double ry0 = 0;
-        // double ry1 = (y1-y0)/ratio;
-        // double ry2 = (y2-y0)/ratio;
-        // double ry3 = (y3-y0)/ratio;
-        // double ry4 = (y4-y0)/ratio;
-
-        // 求k
-        double k0 = (ry1-ry0) / (x1 - x0);
-        double k1 = (ry2-ry1) / (x2 - x1);
-        double k2 = (ry3-ry2) / (x3 - x2);
-        double k3 = (ry4-ry3) / (x4 - x3);
-        double k = (ry4-ry0) / (x4 - x0);
-
-        double b0 = ry0-k0*x0;
-        double b1 = ry1-k1*x1;
-        double b2 = ry2-k2*x2;
-        double b3 = ry3-k3*x3;
-        double b = ry0-k*x0;
-
-        double sum = 0;
-        sum += compute_integrate(k, k0, b, b0, x0, x1);
-        sum += compute_integrate(k, k1, b, b1, x1, x2);
-        sum += compute_integrate(k, k2, b, b2, x2, x3);
-        sum += compute_integrate(k, k3, b, b3, x3, x4);
-        // std::cout << "k = " << k << "\n";
-
-        
-
-        // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
-
-        if(sum < (ry4*8)){
-            fitting_liner(n,"liner");
-        }else if(sum < (ry4*16)){
-            fitting_liner(n,"liner_inferior");
-        }else if(sum < (ry4*32)){
-            fitting_liner(n,"xinferior2");
-        }else if(sum < (ry4*55)){
-            fitting_gap_x2(n,"x2");
-            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
-        }else if(sum < (ry4*77)){
-            fitting_gap_x3(n,"x3");
-            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
-        }else{
-            // fitting_gap_x6(n,"x6");
-            fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
-        }
-
-
-
-        n->insert_count = 0;
-        n->delete_count = 0;
-        return true;
-    }
-
-
-    // generate duoxiangshi model
-    template<typename T>
-    bool generate_func_model_27(T* n){
-        // sure s1 != 0, define 5 site for compute k.
-        if(n->slotuse < 32) {
-            n->model_type = modelType::GENERAL;
-            return true;
-        }
-
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-        // 计算4段数据的斜率
-        auto y0 = static_cast<double>(n->slotkey[x0]);
-        auto y1 = static_cast<double>(n->slotkey[x1]);
-        auto y2 = static_cast<double>(n->slotkey[x2]);
-        auto y3 = static_cast<double>(n->slotkey[x3]);
-        auto y4 = static_cast<double>(n->slotkey[x4]);
-
-        // 求k
-        double k0 = (y1-y0) / (x1 - x0);
-        double k1 = (y2-y1) / (x2 - x1);
-        double k2 = (y3-y2) / (x3 - x2);
-        double k3 = (y4-y3) / (x4 - x3);
-        double k = (y4-y0) / (x4 - x0);
-
-        // 求k的大小关系，作为判断类型的依据
-        double left_kk  = k1-k0>0 ? k1/k0-1 : -k0/k1+1;
-        double mid_kk   = k2-k1>0 ? k2/k1-1 : -k1/k2+1;
-        double right_kk = k3-k2>0 ? k3/k2-1 : -k2/k3+1;
-        double line_threshold = 0.5;
-        double turn_threshold = 0.3;
-
-#define TLLL fabs(left_kk) <= line_threshold && fabs(right_kk) <= line_threshold && fabs(mid_kk) <= line_threshold
-
-        if(TLLL){
-            // liner
-            fitting_liner(n,"liner_000");
-        }else{
-            double threshold = std::max(std::max(fabs(left_kk),fabs(right_kk)),std::max(fabs(mid_kk),turn_threshold))/8   ;
-
-            if(left_kk > threshold){
-                if(mid_kk > threshold){
-                    if(right_kk > threshold){
-                        // 凹凹凹 = 凹
-                        fitting_x2(n,"x2_aaa");
-                    }else if(right_kk < -turn_threshold){
-                        // 凹凹凸 = S
-                        fitting_x3r(n,"x3r_aat");
-                    }else{
-                        // 凹凹直 = 凹
-                        fitting_liner(n,"x2_aaz");
-                    }
-                }else if(mid_kk < -turn_threshold){
-                    if(right_kk > turn_threshold){
-                        // 凹凸凹 = W
-                        fitting_x4(n,"x4_ata");
-                    }else if(right_kk < -threshold){
-                        // 凹凸凸 = S
-                        fitting_x3r(n,"x3r_att");
-                    }else{
-                        // 凹凸直 = S
-                        fitting_x3r(n,"x3r_atz");
-                    }
-                }else{
-                    if(right_kk > threshold){
-                        // 凹直凹 = 凹
-                        fitting_liner(n,"x2_aza");
-                    }else if(right_kk < -turn_threshold){
-                        // 凹直凸 = S
-                        fitting_x3r(n,"x3r_azt");
-                    }else{
-                        // 凹直直 = 凹
-                        fitting_liner(n,"x2_azz");
-                    }
-                }
-            }else if(left_kk < -threshold){
-                if(mid_kk > turn_threshold){
-                    if(right_kk > threshold){
-                        // 凸凹凹 = S
-                        fitting_x3(n,"x3_taa");
-                    }else if(right_kk < -turn_threshold){
-                        // 凸凹凸 = M
-                        fitting_x4r(n,"x4r_tat");
-                    }else{
-                        // 凸凹直 = S
-                        fitting_x3(n,"x3_taz");
-                    }
-                }else if(mid_kk < -threshold){
-                    if(right_kk > turn_threshold){
-                        // 凸凸凹 = S
-                        fitting_x3(n,"x3_tta");
-                    }else if(right_kk < -threshold){
-                        // 凸凸凸 = 凸
-                        fitting_x2(n,"x2r_ttt");
-                    }else{
-                        // 凸凸直 = 凸
-                        fitting_liner(n,"x2r_ttz");
-                    }
-                }else{
-                    if(right_kk > turn_threshold){
-                        // 凸直凹 = S
-                        fitting_x3(n,"x3_tza");
-                    }else if(right_kk < -threshold){
-                        // 凸直凸 = 凸
-                        fitting_liner(n,"x2r_tzt");
-                    }else{
-                        // 凸直直 = 凸
-                        fitting_liner(n,"x2r_tzz");
-                    }
-                }
-            }else{
-                if(mid_kk > threshold){
-                    if(right_kk > threshold){
-                        // 直凹凹 = 凹
-                        fitting_liner(n,"x2_zaa");
-                    }else if(right_kk < -turn_threshold){
-                        // 直凹凸 = S
-                        fitting_x3r(n,"x3r_zat");
-                    }else{
-                        // 直凹直 = 凹
-                        fitting_liner(n,"x2_zaz");
-                    }
-                }else if(mid_kk < -threshold){
-                    if(right_kk > turn_threshold){
-                        // 直凸凹 = S
-                        fitting_x3(n,"x3_zta");
-                    }else if(right_kk < -threshold){
-                        // 直凸凸 = 凸
-                        fitting_liner(n,"x2r_ztt");
-                    }else{
-                        // 直凸直 = 凸
-                        fitting_liner(n,"x2r_ztz");
-                    }
-                }else{
-                    if(right_kk > threshold){
-                        // 直直凹
-                        fitting_liner(n,"x2_zza");
-                    }else if(right_kk < -threshold){
-                        // 直直凸
-                        fitting_liner(n,"x2r_zzt");
-                    }else{
-                        // 直直直
-                        fitting_other(n,"other_zzz");
-                        std::cout << "why can happen this liner liner liner\n";
-                    }
-                }
-            }
-        }
-
-        n->insert_count = 0;
-        n->delete_count = 0;
-        return true;
-    }
-
-    template<typename T>
-    bool generate_func_model_10(T* n);
-
-//     // generate duoxiangshi model
-//     template<typename T>
-//     bool generate_func_model_10(T* n){
-//         // sure s1 != 0, define 5 site for compute k.
-//         if(n->slotuse < 32) {
-//             n->model_type = modelType::GENERAL;
-//             return true;
-//         }
-
-//         // f(x)
-//         // array sites
-//         int x4 = n->slotuse - 1;
-//         int x2 = x4 >> 1;
-//         int x1 = x2 >> 1;
-//         int x3 = x2 + x1;
-//         int x0 = 0;
-
-//         // 计算4段数据的斜率
-//         auto y0 = static_cast<double>(n->slotkey[x0]);
-//         auto y1 = static_cast<double>(n->slotkey[x1]);
-//         auto y2 = static_cast<double>(n->slotkey[x2]);
-//         auto y3 = static_cast<double>(n->slotkey[x3]);
-//         auto y4 = static_cast<double>(n->slotkey[x4]);
-
-//         // f'(x) 原来是线性
-//         double k0 = (y1-y0) / (x1 - x0);
-//         double k1 = (y2-y1) / (x2 - x1);
-//         double k2 = (y3-y2) / (x3 - x2);
-//         double k3 = (y4-y3) / (x4 - x3);
-//         double left_kk  = k1-k0>0 ? k1/k0-1 : -k0/k1+1;
-//         double mid_kk   = k2-k1>0 ? k2/k1-1 : -k1/k2+1;
-//         double right_kk = k3-k2>0 ? k3/k2-1 : -k2/k3+1;
-
-//         int x_0 = ((0+x1)>>1 );
-//         int x_1 = ((x1+x2)>>1);
-//         int x_2 = ((x2+x3)>>1);
-//         int x_3 = ((x3+x4)>>1);
-
-//         auto y_1 = static_cast<double>(n->slotkey[x_1]);
-//         auto y_2 = static_cast<double>(n->slotkey[x_2]);
-
-//         double k_m = (y_2 - y_1) / (x_2 - x_1);
-
-
-//         // f''(x)  x^2 一个弯儿
-//         double kk0 = (k1-k0) / (x1 - x0);
-//         double kk1 = (k2-k1) / (x2 - x1);
-//         double kk2 = (k3-k2) / (x3 - x2);
-//         double left_kkk  = fabs(kk1-kk0) - 1;
-//         double right_kkk = fabs(kk2-kk1) - 1;
-
-//         // f'''(x) x^3 两个弯儿
-//         double kkk0 = (kk1-kk0) / x1;
-//         double kkk1 = (kk2-kk1) / x1;
-//         double mid_kkkk = fabs(kkk1-kkk0) - 1;
-
-//         // f''''(x) x^4 三个弯儿
-//         double kkkk0 = (kkk1 - kkk0) / x1;
-
-//         double threshold = std::max(std::max(fabs(left_kk),fabs(right_kk)),fabs(mid_kk))/3;
-//         double r = 1000 + threshold;
-//         double hr = 1000;
-
-// #define T___ fabs(left_kk) + fabs(right_kk) + fabs(mid_kk) <= 1.5
-// // #define T111 left_kkk > 0 && right_kkk > 0
-// #define T111 fabs(left_kk-r)<=hr  && fabs(mid_kk-r) <= hr && fabs(right_kk-r)<=hr
-// #define T110 fabs(left_kk-r)<=hr  && fabs(mid_kk-r) <= hr && fabs(right_kk+r)<=hr
-// #define T101 fabs(left_kk-r)<=hr  && fabs(mid_kk+r) <= hr && fabs(right_kk-r)<=hr
-// #define T100 fabs(left_kk-r)<=hr  && fabs(mid_kk+r) <= hr && fabs(right_kk+r)<=hr
-// #define T011 fabs(left_kk+r)<=hr  && fabs(mid_kk-r) <= hr && fabs(right_kk-r)<=hr
-// #define T010 fabs(left_kk+r)<=hr  && fabs(mid_kk-r) <= hr && fabs(right_kk+r)<=hr
-// #define T001 fabs(left_kk+r)<=hr  && fabs(mid_kk+r) <= hr && fabs(right_kk-r)<=hr
-// #define T000 fabs(left_kk+r)<=hr  && fabs(mid_kk+r) <= hr && fabs(right_kk+r)<=hr
-// // #define T111 left_kkk < 0 && right_kkk < 0
-
-//         if(T___) {
-// #ifdef MYDEBUG
-// std::cout << "liner ";
-// cout_nodeinfo(n);
-// #endif
-//             // ax + b model
-//             // double a1,a2;
-//             n->model_type = modelType::LINE;
-//             double a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-//             n->fa = a1;
-//             n->fb = 0 - static_cast<double>(n->fa * y0);
-//             // a2 = static_cast<double>(y4 - y0) / static_cast<double>(x4-x0);
-//             // if(a2 > 16 && a2 < ((size_t) 1<<50)){
-//             //     n->reverse = true;
-//             //     int i=0;
-//             //     size_t k = get_lt1024(static_cast<size_t>(a2),i);
-//             //     n->rfa = ((size_t)1 << (i+10) ) / k;
-//             //     n->rfb = y0;
-//             //     n->right_move = i + 10;
-//             // }else{
-//                 // n->reverse = false;
-//                 // n->fa = a1;
-//                 // n->fb = 0 - static_cast<double>(n->fa * y0);
-
-//             // }
-//             if(n->isleafnode())
-//                 data_distribution_count[0]++;
-//             else
-//                 data_distribution_count_inner[0]++;
-
-//         }
-//         else if(T111) {
-// #ifdef MYDEBUG
-// std::cout << "111 ";
-// cout_nodeinfo(n);
-// #endif
-//             // 111 x^2 model 
-//             n->model_type = modelType::GENERAL;
-//             n->model_type = modelType::X2;
-
-//             n->fa = 0.5 * (k3-k0) / (x_3-x_0);
-//             n->fb = k0 - 2*n->fa*x_0;
-//             n->fc = y4 - n->fa*table_x2[x4] - n->fb*x4;
-
-//             // n->model_type = modelType::LINE;
-//             // double a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-//             // n->fa = a1;
-//             // n->fb = 0 - static_cast<double>(n->fa * y0);
-
-//             // n->fa = 0.5 * (k3-k0) / (n->slotkey[x_3] - n->slotkey[x_0]);
-//             // n->fb = k0 - 2*n->fa*n->slotkey[x_0];
-//             // n->fc = x0 - n->fa*y0*y0 - n->fb*y0;
-
-
-//             // double a1,a2;
-//             // n->model_type = modelType::LINE;
-//             // a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-//             // n->fa = a1;
-//             // n->fb = 0 - static_cast<double>(n->fa * y0);
-
-
-//             // // std::cout << n->fa << "*x^2 + " << n->fb << "*x + " << n->fc << "\n";
-//             if(n->isleafnode())
-//                 data_distribution_count[1]++;
-//             else
-//                 data_distribution_count_inner[1]++;
-//         }
-//         else if(T000){
-// #ifdef MYDEBUG
-// std::cout << "000 ";
-// cout_nodeinfo(n);
-// #endif
-//             // 000 x^2 model
-//             n->model_type = modelType::GENERAL;
-//             n->model_type = modelType::X2;
-
-
-//             n->fa = 0.5 * (k3-k0) / (x_3-x_0);
-//             n->fb = k0 - 2*n->fa*x_0;
-//             n->fc = y0 - n->fa*table_x2[x0] - n->fb*x0;
-
-
-//             // n->model_type = modelType::LINE;
-//             // double a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-//             // n->fa = a1;
-//             // n->fb = 0 - static_cast<double>(n->fa * y0);
-
-//             // n->fa = 0.5 * (k3-k0) / (n->slotkey[x_3] - n->slotkey[x_0]);
-//             // n->fb = k0 - 2*n->fa*n->slotkey[x_0];
-//             // n->fc = x4 - n->fa*y4*y4 - n->fb*y4;
-
-//             // double a1,a2;
-//             // n->model_type = modelType::LINE;
-//             // a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-//             // n->fa = a1;
-//             // n->fb = 0 - static_cast<double>(n->fa * y0);
-
-//             if(n->isleafnode())
-//                 data_distribution_count[8]++;
-//             else
-//                 data_distribution_count_inner[8]++;
-//         }
-//         else if(T110){
-// #ifdef MYDEBUG
-// std::cout << "110 ";
-// cout_nodeinfo(n);
-// #endif
-//             // 110 x+sinx
-//             // n->model_type = modelType::X3;
-//             // n->fa = 0.333 * ((k0-k_m)*(x_0-x_3) - (k0 - k3)*(x_0 - x2)) / ((x_0-x2)*(x_0-x_3)*(x2-x_3));
-//             // n->fb = (k0-k_m - 3*n->fa*(table_x2[x_0] - table_x2[x2])) / (2*(x_0-x2));
-//             // n->fc = k0 - 3*n->fa*table_x2[x_0] - 2*n->fb*x_0;
-//             // n->fd = y2 - n->fa*table_x3[x2] - n->fb*table_x2[x2] - n->fc*x2;
-
-//             double a1,a2;
-//             n->model_type = modelType::LINE;
-//             a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-//             n->fa = a1;
-//             n->fb = 0 - static_cast<double>(n->fa * y0);
-
-//             if(n->isleafnode())
-//                 data_distribution_count[2]++;
-//             else
-//                 data_distribution_count_inner[2]++;
-            
-//         }
-//         else if(T101){
-// #ifdef MYDEBUG
-// std::cout << "101 ";
-// cout_nodeinfo(n);
-// #endif
-//             // 101 x+sinx
-//             n->model_type = modelType::GENERAL;
-
-//             double a1,a2;
-//             n->model_type = modelType::LINE;
-//             a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-//             n->fa = a1;
-//             n->fb = 0 - static_cast<double>(n->fa * y0);
-
-//             // cout_nodeinfo(n);
-//             if(n->isleafnode())
-//                 data_distribution_count[3]++;
-//             else
-//                 data_distribution_count_inner[3]++;
-
-//         }
-//         else if(T100){
-// #ifdef MYDEBUG
-// std::cout << "100 ";
-// cout_nodeinfo(n);
-// #endif
-//             // 100 x+sinx
-//             double a1,a2;
-//             n->model_type = modelType::LINE;
-//             a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-//             n->fa = a1;
-//             n->fb = 0 - static_cast<double>(n->fa * y0);
-
-
-//             if(n->isleafnode())
-//                 data_distribution_count[4]++;
-//             else
-//                 data_distribution_count_inner[4]++;
-//         }
-//         else if(T011){
-// #ifdef MYDEBUG
-// std::cout << "011 ";
-// cout_nodeinfo(n);
-// #endif
-//             // 011 x+sinx
-// /*             n->model_type = modelType::GENERAL;
-//             double maxk = std::max(std::max(k0,k1),std::max(k2,k3));
-//             double mink = std::min(std::min(k0,k1),std::min(k2,k3));
-//             double a = (x4-x0) / (y4-y0);
-//             double c = 6.28 /  (y4-y0);
-//             double b =  (maxk - mink) / (2*c) * c > a ? a/c : (maxk - mink) / (2*c) * c;
-//             double d = 0 - (a * y0);
-//             n->fa = a;
-//             n->fb = b;
-//             n->fc = c;
-//             n->fd = d;
-//             n->fe = y0;
-//             // std::cout << "f(x) = " 
-//             // << a << "*x + " << b << "*sin(" << c << "*(x-" << y0 << ")) + " << d << "\n" ;
-//             // cout_nodeinfo(n);
-//             size_t line_err = 0;
-//             size_t erros = 0;
-//             // check_fitting(n,line_err,erros);
-//             // std::cout << "error is " << line_err << " " << erros  << std::endl;
-//             // // if(erros > 30)
-//             //     cout_nodeinfo(n); */
-//             double a1,a2;
-//             n->model_type = modelType::LINE;
-//             a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-//             n->fa = a1;
-//             n->fb = 0 - static_cast<double>(n->fa * y0);
-//             if(n->isleafnode())
-//                 data_distribution_count[5]++;
-//             else
-//                 data_distribution_count_inner[5]++;
-
-//         }
-//         else if(T010){
-// #ifdef MYDEBUG
-// std::cout << "010 ";
-// cout_nodeinfo(n);
-// #endif
-//             // 010 x+sinx
-//             double a1,a2;
-//             n->model_type = modelType::LINE;
-//             a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-//             n->fa = a1;
-//             n->fb = 0 - static_cast<double>(n->fa * y0);
-
-
-//             // cout_nodeinfo(n);
-//             if(n->isleafnode())
-//                 data_distribution_count[6]++;
-//             else
-//                 data_distribution_count_inner[6]++;
-//         }
-//         else if(T001){
-// #ifdef MYDEBUG
-// std::cout << "001 ";
-// cout_nodeinfo(n);
-// #endif
-//             // 001 x+sinx
-//             double a1,a2;
-//             n->model_type = modelType::LINE;
-//             a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-//             n->fa = a1;
-//             n->fb = 0 - static_cast<double>(n->fa * y0);
-//             if(n->isleafnode())
-//                 data_distribution_count[7]++;
-//             else
-//                 data_distribution_count_inner[7]++;
-
-//         }
-
-//         else{
-// #ifdef MYDEBUG
-// std::cout << "other ";
-// cout_nodeinfo(n);
-// #endif
-//             // x^n model
-//             double a1,a2;
-//             n->model_type = modelType::LINE;
-//             a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-//             n->fa = a1;
-//             n->fb = 0 - static_cast<double>(n->fa * y0);
-//             // std::cout << "is general node" << "\n";
-//             // cout_nodeinfo(n);
-//             // std::cout << x_0 << " ";
-//             // std::cout << x_1 << " ";
-//             // std::cout << x_2 << " ";
-//             // std::cout << x_3 << "\n";
-
-//             // std::vector<std::vector<double>> input =  {
-//             //     {table_x3[x_0],table_x2[x_0],x_0,1},
-//             //     {table_x3[x_1],table_x2[x_1],x_1,1},
-//             //     {table_x3[x_2],table_x2[x_2],x_2,1},
-//             //     {table_x3[x_3],table_x2[x_3],x_3,1}
-//             // };
-            
-//             // std::vector<std::vector<double>> r = get_inverse(input);
-//             // double a = r[0][0] * k0 + r[0][1] * k1 + r[0][2] * k2 + r[0][3] * k3;
-//             // double b = r[1][0] * k0 + r[1][1] * k1 + r[1][2] * k2 + r[1][3] * k3;
-//             // double c = r[2][0] * k0 + r[2][1] * k1 + r[2][2] * k2 + r[2][3] * k3;
-//             // double d = r[3][0] * k0 + r[3][1] * k1 + r[3][2] * k2 + r[3][3] * k3;
-//             // n->fa = a/4;
-//             // n->fb = b/3;
-//             // n->fc = c/2;
-//             // n->fd = d;
-//             // double e1 = y0 - (a*table_x4[x0] + b*table_x3[x0] + c*table_x2[x0] +d*x0) ;
-//             // double e2 = y2 - (a*table_x4[x2] + b*table_x3[x2] + c*table_x2[x2] +d*x2) ;
-//             // double e3 = y4 - (a*table_x4[x4] + b*table_x3[x4] + c*table_x2[x4] +d*x4) ;
-//             // n->fe = (e1+e2+e3)/3;
-
-//             // size_t line_err=0,errs=0;
-//             // check_fitting_x4(n, line_err, errs);
-//             // std::cout << line_err << " " << errs << std::endl;
-//             // cout_nodeinfo(n);
-//             if(n->isleafnode())
-//                 data_distribution_count[9]++;
-//             else
-//                 data_distribution_count_inner[9]++;
-//         }
-
-//         n->insert_count = 0;
-//         n->delete_count = 0;
-//         return true;
-//     }
-
-    // generate duoxiangshi model
-    template<typename T>
-    bool generate_func_model_l(T* n){
-        // sure s1 != 0, define 5 site for compute k.
-        if(n->slotuse < 16) {
-            n->model_type = modelType::GENERAL;
-            return true;
-        }
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-        // 计算4段数据的斜率
-        auto y0 = static_cast<double>(n->slotkey[x0]);
-        auto y1 = static_cast<double>(n->slotkey[x1]);
-        auto y2 = static_cast<double>(n->slotkey[x2]);
-        auto y3 = static_cast<double>(n->slotkey[x3]);
-        auto y4 = static_cast<double>(n->slotkey[x4]);
-        double k0 = (y1-y0) / (x1 - x0);
-        double k1 = (y2-y1) / (x2 - x1);
-        double k2 = (y3-y2) / (x3 - x2);
-        double k3 = (y4-y3) / (x4 - x3);
-
-        n->model_type = modelType::LINE;
-        n->fa =  static_cast<double>(x4-x0) / static_cast<double>(y4-y0);
-        n->fb = 0 - static_cast<double>(n->fa * y0);
-        cout_nodeinfo(n);
-    
-        n->insert_count = 0;
-        n->delete_count = 0;
-        return true;
-    }
 
     /**
      * @brief Insert an item into the B+ tree.
@@ -5706,140 +4578,6 @@ public:
                 ++inner_index;
                 num_children -= n->slotuse + 1;
                 generate_func_model(n);
-            }
-
-            BTREE_ASSERT(num_children == 0);
-        }
-
-        m_root = nextlevel[0].first;
-        delete[] nextlevel;
-
-        if (selfverify) verify();
-    }
-
-    // bulk l
-    template <typename Iterator>
-    void bulk_load_l(Iterator ibegin, Iterator iend)
-    {
-        BTREE_ASSERT(empty());
-
-        m_stats.itemcount = iend - ibegin;
-
-        // calculate number of leaves needed, round up.
-        size_t num_items = iend - ibegin;
-        size_t num_leaves = (num_items + leafslotmax - 1) / leafslotmax;
-
-        BTREE_PRINT("btree::bulk_load, level 0: " << m_stats.itemcount << " items into " << num_leaves << " leaves with up to " << ((iend - ibegin + num_leaves - 1) / num_leaves) << " items per leaf.");
-
-        Iterator it = ibegin;
-        for (size_t i = 0; i < num_leaves; ++i)
-        {
-            // allocate new leaf node
-            leaf_node* leaf = allocate_leaf();
-
-            // copy keys or (key,value) pairs into leaf nodes, uses template
-            // switch leaf->set_slot().
-            leaf->slotuse = static_cast<int>(num_items / (num_leaves - i));
-            for (size_t s = 0; s < leaf->slotuse; ++s, ++it)
-                leaf->set_slot(s, *it);
-
-            if (m_tailleaf != NULL) {
-                m_tailleaf->nextleaf = leaf;
-                leaf->prevleaf = m_tailleaf;
-            }
-            else {
-                m_headleaf = leaf;
-            }
-            m_tailleaf = leaf;
-
-            num_items -= leaf->slotuse;
-            generate_func_model_l(leaf);
-        }
-
-        BTREE_ASSERT(it == iend && num_items == 0);
-
-        // if the btree is so small to fit into one leaf, then we're done.
-        if (m_headleaf == m_tailleaf) {
-            m_root = m_headleaf;
-            return;
-        }
-
-        BTREE_ASSERT(m_stats.leaves == num_leaves);
-
-        // create first level of inner nodes, pointing to the leaves.
-        size_t num_parents = (num_leaves + (innerslotmax + 1) - 1) / (innerslotmax + 1);
-
-        BTREE_PRINT("btree::bulk_load, level 1: " << num_leaves << " leaves in " << num_parents << " inner nodes with up to " << ((num_leaves + num_parents - 1) / num_parents) << " leaves per inner node.");
-
-        // save inner nodes and maxkey for next level.
-        typedef std::pair<inner_node*, const key_type*> nextlevel_type;
-        nextlevel_type* nextlevel = new nextlevel_type[num_parents];
-
-        leaf_node* leaf = m_headleaf;
-        for (size_t i = 0; i < num_parents; ++i)
-        {
-            // allocate new inner node at level 1
-            inner_node* n = allocate_inner(1);
-
-            n->slotuse = static_cast<int>(num_leaves / (num_parents - i));
-            BTREE_ASSERT(n->slotuse > 0);
-            --n->slotuse; // this counts keys, but an inner node has keys+1 children.
-
-            // copy last key from each leaf and set child
-            for (unsigned short s = 0; s < n->slotuse; ++s)
-            {
-                n->slotkey[s] = leaf->slotkey[leaf->slotuse - 1];
-                n->childid[s] = leaf;
-                leaf = leaf->nextleaf;
-            }
-            n->childid[n->slotuse] = leaf;
-
-            // track max key of any descendant.
-            nextlevel[i].first = n;
-            nextlevel[i].second = &leaf->slotkey[leaf->slotuse - 1];
-
-            leaf = leaf->nextleaf;
-            num_leaves -= n->slotuse + 1;
-            generate_func_model_l(n);
-        }
-
-        BTREE_ASSERT(leaf == NULL && num_leaves == 0);
-
-        // recursively build inner nodes pointing to inner nodes.
-        for (int level = 2; num_parents != 1; ++level)
-        {
-            size_t num_children = num_parents;
-            num_parents = (num_children + (innerslotmax + 1) - 1) / (innerslotmax + 1);
-
-            BTREE_PRINT("btree::bulk_load, level " << level << ": " << num_children << " children in " << num_parents << " inner nodes with up to " << ((num_children + num_parents - 1) / num_parents) << " children per inner node.");
-
-            size_t inner_index = 0;
-            for (size_t i = 0; i < num_parents; ++i)
-            {
-                // allocate new inner node at level
-                inner_node* n = allocate_inner(level);
-
-                n->slotuse = static_cast<int>(num_children / (num_parents - i));
-                BTREE_ASSERT(n->slotuse > 0);
-                --n->slotuse; // this counts keys, but an inner node has keys+1 children.
-
-                // copy children and maxkeys from nextlevel
-                for (unsigned short s = 0; s < n->slotuse; ++s)
-                {
-                    n->slotkey[s] = *nextlevel[inner_index].second;
-                    n->childid[s] = nextlevel[inner_index].first;
-                    ++inner_index;
-                }
-                n->childid[n->slotuse] = nextlevel[inner_index].first;
-
-                // reuse nextlevel array for parents, because we can overwrite
-                // slots we've already consumed.
-                nextlevel[i].first = n;
-                nextlevel[i].second = nextlevel[inner_index].second;
-
-                ++inner_index;
-                num_children -= n->slotuse + 1;
-                generate_func_model_l(n);
             }
 
             BTREE_ASSERT(num_children == 0);
