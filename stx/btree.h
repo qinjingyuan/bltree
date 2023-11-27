@@ -2293,28 +2293,28 @@ cout_nodeinfo(n);
         compute_integrate(k, k7, b, b7, x7, x8, up, down);
         up_sum+=up; down_sum+=down;
 
-        fitting_liner(n,"sum_" + std::to_string(static_cast<int>((up_sum+down_sum)/ry8)));
+        // fitting_liner(n,"sum_" + std::to_string(static_cast<int>((up_sum+down_sum)/ry8)));
 
-        // double errs = (up_sum + down_sum)/ry8;
-        // if(errs < 8){
-        //     fitting_liner(n,"sum_" + std::to_string(static_cast<int>(errs)));
-        // }
-        // else if(errs < 16){
-        //     fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
-        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
-        // }
-        // else if(errs < 32){
-        //     fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
-        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
-        // }
-        // else if(errs < 64){
-        //     fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
-        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
-        // }
-        // else{
-        //     fitting_gap_x6(n,"x6");
-        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
-        // }
+        double errs = (up_sum + down_sum)/ry8;
+        if(errs < 8){
+            fitting_liner(n,"sum_" + std::to_string(static_cast<int>(errs)));
+        }
+        else if(errs < 16){
+            fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
+            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+        }
+        else if(errs < 32){
+            fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
+            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+        }
+        else if(errs < 64){
+            fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
+            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+        }
+        else{
+            fitting_gap_x6(n,"x6");
+            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
+        }
         
 
 
