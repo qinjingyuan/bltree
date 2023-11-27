@@ -131,8 +131,8 @@ double compute_level(const std::pair<T, P> values[], int num_keys,
             ? num_keys
             : static_cast<int>(
                   std::lower_bound(values, values + num_keys, ((i + 1) - b) / a,
-                                   [key_less](auto const& a, auto const& b) {
-                                     return key_less(a.first, b);
+                                   [key_less](auto const& la, auto const& lb) {
+                                     return key_less(la.first, lb);
                                    }) -
                   values);
     // Account for off-by-one errors due to floating-point precision issues.
@@ -271,8 +271,8 @@ std::pair<int, double> find_best_fanout_top_down(
           std::lower_bound(values + tree_node.left_boundary,
                            values + tree_node.right_boundary,
                            ((2 * tree_node.node_id + 1) - b) / a,
-                           [key_less](auto const& a, auto const& b) {
-                             return key_less(a.first, b);
+                           [key_less](auto const& la, auto const& lb) {
+                             return key_less(la.first, lb);
                            }) -
           values);
       double node_split_cost = 0;

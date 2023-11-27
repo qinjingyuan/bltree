@@ -1,1 +1,0 @@
-/usr/bin/c++ -O1 -march=native -Wall -Wextra CMakeFiles/btree_prefetch.dir/src/main.cpp.o -o btree_prefetch 

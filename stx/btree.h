@@ -1835,7 +1835,11 @@ private:
         pre_target = pre_target >= hi ? hi-1 : pre_target ;
         pre_target = pre_target < 0 ? 0 : pre_target;
         point = pre_target;
-        // __builtin_prefetch(&(n->slotdata[point]),0,1);
+        // __builtin_prefetch(&(n->slotkey[point-16>=0?point-16:0]),0,1);
+        // __builtin_prefetch(&(n->slotkey[point-8>=0?point-8:0]),0,1);
+        // __builtin_prefetch(&(n->slotkey[point]),0,1);
+        // __builtin_prefetch(&(n->slotkey[point+8<hi?point+8:0]),0,1);
+        // __builtin_prefetch(&(n->slotkey[point+16<hi?point+16:0]),0,1);
         if(n->slotkey[point] < key){
 
             while (point < hi && key_less(n->slotkey[point], key)) {

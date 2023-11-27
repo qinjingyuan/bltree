@@ -1,4 +1,4 @@
-#pragma once
+// #pragma once
 
 #include <cstdint>
 #include <iomanip>
@@ -58,16 +58,16 @@ auto test_btree(std::vector<std::pair<size_t,size_t>> data,int count,int times) 
     // for(auto e:bt){
     //     std::cout << e.first << "\t" << e.second << std::endl;
     // }
-    auto res = bt.find(718186352);
-    std::cout << res->first << " " << res->second << "\n";
+    // auto res = bt.find(718186352);
+    // std::cout << res->first << " " << res->second << "\n";
     size_t states[2] = {0};
     for(int i=0;i<times;i++){
 
 
-        for(int i=0;i<5;i++){
-            stx::gaps[i] = 0;
-            stx::gaps_count[i] = 0;
-            stx::level_delay[i] = 0;
+        for(int j=0;j<5;j++){
+            stx::gaps[j] = 0;
+            stx::gaps_count[j] = 0;
+            stx::level_delay[j] = 0;
         }
 
 
@@ -162,11 +162,11 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
 
     size_t states[2] = {0};
     for(int i=0;i<times;i++){
-        for(int i=0;i<5;i++){
-            stx::gaps[i] = 0;
-            stx::gaps_count[i] = 0;
-            stx::level_delay[i] = 0;
-            stx::level_delay_count[i] = 1;
+        for(int j=0;j<5;j++){
+            stx::gaps[j] = 0;
+            stx::gaps_count[j] = 0;
+            stx::level_delay[j] = 0;
+            stx::level_delay_count[j] = 1;
         }
 
         unsigned long using_times1 = 0;
@@ -239,10 +239,10 @@ auto test_alex(std::vector<std::pair<size_t,size_t>> data,int count,int times) -
     size_t states[2] = {0};
     for(int i=0;i<times;i++){
 
-        for(int i=0;i<5;i++){
-            stx::gaps[i] = 0;
-            stx::gaps_count[i] = 0;
-            stx::level_delay[i] = 0;
+        for(int j=0;j<5;j++){
+            stx::gaps[j] = 0;
+            stx::gaps_count[j] = 0;
+            stx::level_delay[j] = 0;
         }
 
         unsigned long using_times1 = 0;
@@ -300,8 +300,8 @@ auto test_alex(std::vector<std::pair<size_t,size_t>> data,int count,int times) -
 void test_map_instance(size_t numkeys, unsigned int mod,int count)
 {
     int find_count = 1000000;
-    typedef stx::btree_multimap<size_t, size_t,
-                                std::less<unsigned int>, traits_nodebug<unsigned int> > btree_type;
+    // typedef stx::btree_multimap<size_t, size_t,
+    //                             std::less<unsigned int>, traits_nodebug<unsigned int> > btree_type;
 
     std::vector<std::pair<size_t, size_t> > pairs(numkeys);
 
@@ -321,11 +321,11 @@ void test_map_instance(size_t numkeys, unsigned int mod,int count)
 
     std::cout << "btree size is " << bt.size() << "\n";
     for(int i=0;i<count;i++) {
-        for(int i=0;i<5;i++){
-            stx::gaps[i] = 0;
-            stx::gaps_count[i] = 0;
-            stx::level_delay[i] = 0;
-            stx::level_delay_count[i] = 1;
+        for(int j=0;j<5;j++){
+            stx::gaps[j] = 0;
+            stx::gaps_count[j] = 0;
+            stx::level_delay[j] = 0;
+            stx::level_delay_count[j] = 1;
         }
 
             // stx::ns_count[0]=0;
@@ -337,7 +337,7 @@ void test_map_instance(size_t numkeys, unsigned int mod,int count)
 
         srand(342342350);
         unsigned long using_times = 0;
-        for (unsigned int i = 0; i < find_count; i++)
+        for (int j = 0; j < find_count; j++)
         {
             size_t tmp = (rand() % mod);
             auto currentTime1 = std::chrono::high_resolution_clock::now();
@@ -402,7 +402,7 @@ int main(int argc, char** argv){
 
     std::sort(keys.begin(),keys.end());
     std::vector<std::pair<size_t,size_t>> data(keys.size());
-    for(int i=0;i<data.size();i++){
+    for(size_t i=0;i<data.size();i++){
         data[i].first = keys[i];
         data[i].second = keys[i];
     }

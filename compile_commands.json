@@ -1,7 +1,7 @@
 [
 {
   "directory": "/home/qinjingyuan/index_opt/cmp_lab",
-  "command": "/usr/bin/c++ -DNDEBUG -DSEP -I/home/qinjingyuan/index_opt/cmp_lab/. -I/home/qinjingyuan/index_opt/cmp_lab/lipp/src/core -I/home/qinjingyuan/index_opt/cmp_lab/DyTIS -I/home/qinjingyuan/index_opt/cmp_lab/DyTIS/benchmark -O1 -march=native -Wall -Wextra   -ggdb -lrt -lpthread -lm -flto -fno-stack-protector -Wno-unknown-pragmas -Wall -rdynamic -O3 -g -Wextra -march=native -Wextra -Wshadow -std=gnu++17 -o CMakeFiles/btree_opt.dir/src/main.cpp.o -c /home/qinjingyuan/index_opt/cmp_lab/src/main.cpp",
+  "command": "/usr/bin/c++ -DCOUNT_GAP -I/home/qinjingyuan/index_opt/cmp_lab/. -I/home/qinjingyuan/index_opt/cmp_lab/lipp/src/core -I/home/qinjingyuan/index_opt/cmp_lab/DyTIS -I/home/qinjingyuan/index_opt/cmp_lab/DyTIS/benchmark -I/home/qinjingyuan/index_opt/cmp_lab/eigen -O1 -march=native -Wextra   -ggdb -lrt -lpthread -lm -flto -fno-stack-protector -Wno-unknown-pragmas -rdynamic -O3 -g -Wextra -march=native -Wextra -Wshadow -std=gnu++17 -o CMakeFiles/btree_opt.dir/src/main.cpp.o -c /home/qinjingyuan/index_opt/cmp_lab/src/main.cpp",
   "file": "/home/qinjingyuan/index_opt/cmp_lab/src/main.cpp"
 }
 ]
