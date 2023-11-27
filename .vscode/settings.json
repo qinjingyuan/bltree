@@ -93,6 +93,7 @@
         "strstream": "cpp",
         "hash_map": "cpp",
         "nnls": "cpp",
-        "*.inc": "cpp"
+        "*.inc": "cpp",
+        "alignedvector3": "cpp"
     }
 }

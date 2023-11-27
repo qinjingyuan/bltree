@@ -1,8 +1,8 @@
 /*******************************************************************************
- * include/stx/btree_multimap.h
+ * include/stx/btree_map.h
  *
  * STX B+ Tree Template Classes v0.9
- * Copyright (C) 2008-2013 Timo Bingmann
+ * Copyright (C) 2008-2013 Timo Bingmann <tb@panthema.net>
  *
  * Boost Software License - Version 1.0 - August 17th, 2003
  *
@@ -29,29 +29,28 @@
  * DEALINGS IN THE SOFTWARE.
  ******************************************************************************/
 
-#ifndef STX_STX_BTREE_MULTIMAP_H_HEADER
-#define STX_STX_BTREE_MULTIMAP_H_HEADER
+#ifndef STX_STX_BTREE_MAP_H_HEADER
+#define STX_STX_BTREE_MAP_H_HEADER
 
-/** \file btree_multimap.h
- * Contains the specialized B+ tree template class btree_multimap
+/** \file btree_map.h
+ * Contains the specialized B+ tree template class btree_map
  */
 
 #include <stx/btree.h>
 
 namespace stx {
 
-/** @brief Specialized B+ tree template class implementing STL's multimap
- * container.
+/** @brief Specialized B+ tree template class implementing STL's map container.
  *
- * Implements the STL multimap using a B+ tree. It can be used as a drop-in
- * replacement for std::multimap. Not all asymptotic time requirements are met
- * in theory. The class has a traits class defining B+ tree properties like
- * slots and self-verification. Furthermore an allocator can be specified for
- * tree nodes.
+ * Implements the STL map using a B+ tree. It can be used as a drop-in
+ * replacement for std::map. Not all asymptotic time requirements are met in
+ * theory. The class has a traits class defining B+ tree properties like slots
+ * and self-verification. Furthermore an allocator can be specified for tree
+ * nodes.
  *
  * Most noteworthy difference to the default red-black implementation of
- * std::multimap is that the B+ tree does not hold key and data pair together
- * in memory. Instead each B+ tree node has two arrays of keys and data
+ * std::map is that the B+ tree does not hold key and data pair together in
+ * memory. Instead each B+ tree node has two arrays of keys and data
  * values. This design directly generates many problems in implementing the
  * iterator's operator's which return value_type composition pairs.
  */
@@ -59,7 +58,7 @@ template <typename _Key, typename _Data,
           typename _Compare = std::less<_Key>,
           typename _Traits = btree_default_map_traits<_Key, _Data>,
           typename _Alloc = std::allocator<std::pair<_Key, _Data> > >
-class btree_multimap
+class btree_map
 {
 public:
     // *** Template Parameter Types
@@ -91,7 +90,7 @@ public:
     // *** Constructed Types
 
     /// Typedef of our own type
-    typedef btree_multimap<key_type, data_type, key_compare, traits, allocator_type> self_type;
+    typedef btree_map<key_type, data_type, key_compare, traits, allocator_type> self_type;
 
     /// Construct the STL-required value_type as a composition pair of key and
     /// data types
@@ -99,7 +98,7 @@ public:
 
     /// Implementation type of the btree_base
     typedef stx::btree<key_type, data_type, value_type, key_compare,
-                       traits, true, allocator_type, false> btree_impl;
+                       traits, false, allocator_type, false> btree_impl;
 
     /// Function class comparing two value_type pairs.
     typedef typename btree_impl::value_compare value_compare;
@@ -170,34 +169,34 @@ public:
 
     /// Default constructor initializing an empty B+ tree with the standard key
     /// comparison function
-    explicit inline btree_multimap(const allocator_type& alloc = allocator_type())
+    explicit inline btree_map(const allocator_type& alloc = allocator_type())
         : tree(alloc)
     { }
 
     /// Constructor initializing an empty B+ tree with a special key
     /// comparison object
-    explicit inline btree_multimap(const key_compare& kcf,
-                                   const allocator_type& alloc = allocator_type())
+    explicit inline btree_map(const key_compare& kcf,
+                              const allocator_type& alloc = allocator_type())
         : tree(kcf, alloc)
     { }
 
     /// Constructor initializing a B+ tree with the range [first,last)
     template <class InputIterator>
-    inline btree_multimap(InputIterator first, InputIterator last,
-                          const allocator_type& alloc = allocator_type())
+    inline btree_map(InputIterator first, InputIterator last,
+                     const allocator_type& alloc = allocator_type())
         : tree(first, last, alloc)
     { }
 
     /// Constructor initializing a B+ tree with the range [first,last) and a
     /// special key comparison object
     template <class InputIterator>
-    inline btree_multimap(InputIterator first, InputIterator last, const key_compare& kcf,
-                          const allocator_type& alloc = allocator_type())
+    inline btree_map(InputIterator first, InputIterator last, const key_compare& kcf,
+                     const allocator_type& alloc = allocator_type())
         : tree(first, last, kcf, alloc)
     { }
 
     /// Frees up all used B+ tree memory pages
-    inline ~btree_multimap()
+    inline ~btree_map()
     { }
 
     /// Fast swapping of two identical B+ tree objects.
@@ -344,11 +343,6 @@ public:
         return tree.find(key);
     }
 
-    size_t* find_x(const key_type& key)
-    {
-        return tree.find_x(key);
-    }
-
     /// Tries to locate a key in the B+ tree and returns an constant iterator
     /// to the key/data slot if found. If unsuccessful it returns end().
     const_iterator find(const key_type& key) const
@@ -357,7 +351,8 @@ public:
     }
 
     /// Tries to locate a key in the B+ tree and returns the number of
-    /// identical key entries found.
+    /// identical key entries found. Since this is a unique map, count()
+    /// returns either 0 or 1.
     size_type count(const key_type& key) const
     {
         return tree.count(key);
@@ -410,7 +405,7 @@ public:
 
     /// Equality relation of B+ trees of the same type. B+ trees of the same
     /// size and equal elements (both key and data) are considered
-    /// equal. Beware of the random ordering of duplicate keys.
+    /// equal.
     inline bool operator == (const self_type& other) const
     {
         return (tree == other.tree);
@@ -461,40 +456,36 @@ public:
     }
 
     /// Copy constructor. The newly initialized B+ tree object will contain a
-    /// copy or all key/data pairs.
-    inline btree_multimap(const btree_multimap& other)
+    /// copy of all key/data pairs.
+    inline btree_map(const btree_map& other)
         : tree(other.tree)
     { }
 
 public:
     // *** Public Insertion Functions
 
-    /// Attempt to insert a key/data pair into the B+ tree. As this tree allows
-    /// duplicates insertion never fails.
-    inline iterator insert(const value_type& x)
+    /// Attempt to insert a key/data pair into the B+ tree. Fails if the pair
+    /// is already present.
+    inline std::pair<iterator, bool> insert(const value_type& x)
     {
-        return tree.insert2(x.first, x.second).first;
+        return tree.insert2(x.first, x.second);
     }
 
     /// Attempt to insert a key/data pair into the B+ tree. Beware that if
     /// key_type == data_type, then the template iterator insert() is called
-    /// instead. As this tree allows duplicates insertion never fails.
-    inline iterator insert(const key_type& key, const data_type& data)
+    /// instead. Fails if the inserted pair is already present.
+    inline std::pair<iterator, bool> insert(const key_type& key, const data_type& data)
     {
-        return tree.insert2(key, data).first;
-    }
-    inline iterator insert_x(const key_type& key, const data_type& data)
-    {
-        return tree.insert_x(key, data).first;
+        return tree.insert2(key, data);
     }
 
     /// Attempt to insert a key/data pair into the B+ tree. This function is the
     /// same as the other insert, however if key_type == data_type then the
-    /// non-template function cannot be called.  As this tree allows duplicates
-    /// insertion never fails.
-    inline iterator insert2(const key_type& key, const data_type& data)
+    /// non-template function cannot be called. Fails if the inserted pair is
+    /// already present.
+    inline std::pair<iterator, bool> insert2(const key_type& key, const data_type& data)
     {
-        return tree.insert2(key, data).first;
+        return tree.insert2(key, data);
     }
 
     /// Attempt to insert a key/data pair into the B+ tree. The iterator hint
@@ -509,6 +500,15 @@ public:
     inline iterator insert2(iterator hint, const key_type& key, const data_type& data)
     {
         return tree.insert2(hint, key, data);
+    }
+
+    /// Returns a reference to the object that is associated with a particular
+    /// key. If the map does not already contain such an object, operator[]
+    /// inserts the default object data_type().
+    inline data_type& operator [] (const key_type& key)
+    {
+        iterator i = insert(value_type(key, data_type())).first;
+        return i.data();
     }
 
     /// Attempt to insert the range [first,last) of value_type pairs into the B+
@@ -528,24 +528,18 @@ public:
         return tree.bulk_load(first, last);
     }
 
-    template <typename Iterator>
-    inline void bulk_load_x(Iterator first, Iterator last)
-    {
-        return tree.bulk_load_x(first, last);
-    }
-
 public:
     // *** Public Erase Functions
 
-    /// Erases one (the first) of the key/data pairs associated with the given
-    /// key.
+    /// Erases the key/data pairs associated with the given key. For this
+    /// unique-associative map there is no difference to erase().
     bool erase_one(const key_type& key)
     {
         return tree.erase_one(key);
     }
 
     /// Erases all the key/data pairs associated with the given key. This is
-    /// implemented using erase_one() and thus not very efficient.
+    /// implemented using erase_one().
     size_type erase(const key_type& key)
     {
         return tree.erase(key);
@@ -618,6 +612,6 @@ public:
 
 } // namespace stx
 
-#endif // !STX_STX_BTREE_MULTIMAP_H_HEADER
+#endif // !STX_STX_BTREE_MAP_H_HEADER
 
 /******************************************************************************/

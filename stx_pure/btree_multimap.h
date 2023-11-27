@@ -344,11 +344,6 @@ public:
         return tree.find(key);
     }
 
-    size_t* find_x(const key_type& key)
-    {
-        return tree.find_x(key);
-    }
-
     /// Tries to locate a key in the B+ tree and returns an constant iterator
     /// to the key/data slot if found. If unsuccessful it returns end().
     const_iterator find(const key_type& key) const
@@ -483,10 +478,6 @@ public:
     {
         return tree.insert2(key, data).first;
     }
-    inline iterator insert_x(const key_type& key, const data_type& data)
-    {
-        return tree.insert_x(key, data).first;
-    }
 
     /// Attempt to insert a key/data pair into the B+ tree. This function is the
     /// same as the other insert, however if key_type == data_type then the
@@ -526,12 +517,6 @@ public:
     inline void bulk_load(Iterator first, Iterator last)
     {
         return tree.bulk_load(first, last);
-    }
-
-    template <typename Iterator>
-    inline void bulk_load_x(Iterator first, Iterator last)
-    {
-        return tree.bulk_load_x(first, last);
     }
 
 public:
