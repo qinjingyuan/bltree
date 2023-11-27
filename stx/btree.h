@@ -2143,7 +2143,7 @@ cout_nodeinfo(n);
         double k = (ry4-ry0) / (x4 - x0);
 
         if(k0>k && k3<k){
-            n->model_type = modelType::GAPX6;
+            n->model_type = modelType::LINE;
 
             // double y2x5 = (1/k3)*(1/k3)*(1/k3)*(1/k3)*(1/k3);
             // double y1x5 = (1/k0)*(1/k0)*(1/k0)*(1/k0)*(1/k0);
@@ -2165,7 +2165,7 @@ cout_nodeinfo(n);
             // n->fb = 0 - static_cast<double>(n->fa * y0);
 
         }else if(k0<k && k3>k){
-            n->model_type = modelType::GAPX6;
+            n->model_type = modelType::LINE;
 
             // double y2x5 = (1/k3)*(1/k3)*(1/k3)*(1/k3)*(1/k3);
             // double y1x5 = (1/k0)*(1/k0)*(1/k0)*(1/k0)*(1/k0);
@@ -2295,30 +2295,27 @@ cout_nodeinfo(n);
 
         fitting_liner(n,"sum_" + std::to_string(static_cast<int>((up_sum+down_sum)/ry8)));
 
-        // double errs = (up_sum + down_sum)/ry8;
-        // if(errs < 8){
-        //     fitting_liner(n,"sum_" + std::to_string(static_cast<int>(errs)));
-        // }
-        // else if(errs < 16){
-        //     fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
-        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
-        // }
-        // else if(errs < 32){
-        //     fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
-        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
-        // }
-        // else if(errs < 64){
-        //     fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
-        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
-        // }
-        // else{
-        //     fitting_gap_x6(n,"x6");
-        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
-        // }
+        double errs = (up_sum + down_sum)/ry8;
+        if(errs < 8){
+            fitting_liner(n,"sum_" + std::to_string(static_cast<int>(errs)));
+        }
+        else if(errs < 16){
+            fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
+            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+        }
+        else if(errs < 32){
+            fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
+            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+        }
+        else if(errs < 64){
+            fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
+            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+        }
+        else{
+            fitting_gap_x6(n,"x6");
+            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
+        }
         
-
-
-
         n->insert_count = 0;
         n->delete_count = 0;
         return true;
@@ -2455,12 +2452,8 @@ public:
         while (!n->isleafnode())
         {
             const inner_node* inner = static_cast<const inner_node*>(n);
-            int slot;
-            if(btree_level==0){
-                slot = find_lower_liner(inner,key);
-            }else{
-                slot = find_lower_x(inner, key);
-            }
+            int slot = find_lower_x(inner, key);
+
             n = inner->childid[slot];
             btree_level++;
         }
@@ -2471,61 +2464,6 @@ public:
 
         return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
                ? &(leaf->slotdata[slot]) : nullptr;
-    }
-
-    iterator find_l(const key_type& key)
-    {
-        btree_level = 0;
-        node* n = m_root;
-        if (!n) return end();
-        // key_type min_key ;
-        // key_type max_key ;
-        // if(n->isleafnode()){
-        //     const leaf_node* innert = static_cast<const leaf_node*>(n);
-        //     min_key = innert->minkey();
-        //     max_key = innert->maxkey();
-        // }else{
-        //     const inner_node* innert = static_cast<const inner_node*>(n);
-        //     min_key = innert->minkey();
-        //     max_key = innert->maxkey();
-        // }
-
-        // bool is_max_min = true;
-
-        while (!n->isleafnode())
-        {
-            const inner_node* inner = static_cast<const inner_node*>(n);
-// #ifdef TIMING
-//             auto currentTime1 = std::chrono::high_resolution_clock::now();
-// #endif
-            int slot = find_lower_l(inner, key);
-// #ifdef TIMING
-//             // auto currentTime2 = std::chrono::high_resolution_clock::now();
-// #endif
-            n = inner->childid[slot];
-            // #ifdef TIMING
-            // // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-            // // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-            // // level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
-            // #endif
-            btree_level++;
-        }
-
-        leaf_node* leaf = static_cast<leaf_node*>(n);
-        // #ifdef TIMING
-        // auto currentTime1 = std::chrono::high_resolution_clock::now();
-        // #endif
-
-        int slot = find_lower_l(leaf, key);
-        // #ifdef TIMING
-        // auto currentTime2 = std::chrono::high_resolution_clock::now();
-        // auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        // auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        // level_delay[btree_level] +=  (nanoseconds2 - nanoseconds1);
-        // #endif
-
-        return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
-               ? iterator(leaf, slot) : end();
     }
 
     /// Tries to locate a key in the B+ tree and returns an constant iterator
