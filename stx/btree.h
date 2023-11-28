@@ -342,11 +342,11 @@ private:
         // Polynomial variable
         double fa = 0;
         double fb = 0;
+        int key_move_bits = 0;
+        size_t value_base = 0;
         double fc = 0;
         // double fd = 0;
         // double fe = 0;
-        int key_move_bits = 0;
-        size_t value_base = 0;
         // size_t rfa = 0;
         // size_t rfb = 0;
         uint16_t gap_ratio = 0;
@@ -1807,8 +1807,8 @@ private:
 
 
 
-    template <typename node_type>
-    inline int find_lower_liner(const node_type* n, const key_type& key ) const
+    // template <typename node_type>
+    inline int find_lower_liner(const inner_node* n, const key_type key ) const
     {
 #ifdef LINECOUNT_TIME
         auto currentTime1 = std::chrono::high_resolution_clock::now();
@@ -1816,44 +1816,100 @@ private:
         if (n->slotuse == 0) return 0;
         int lo = 0, hi = n->slotuse;
         int pre_target,point;
-        size_t smallkey = (key - n->value_base) >> n->key_move_bits;
-        size_t x = static_cast<size_t>(smallkey + n->fb);
 
 #ifdef L0_TIME
         auto currentTime1 = std::chrono::high_resolution_clock::now();
 #endif
+
         pre_target = static_cast<int>(n->fa * key + n->fb);
+
+        pre_target = pre_target >= hi ? hi-1 : pre_target ;
+        pre_target = pre_target < 0 ? 0 : pre_target;
+        point = pre_target;
+
+        if(n->slotkey[point] < key){
+
+            while (point < hi && key_less(n->slotkey[point], key)) {
+                __builtin_prefetch(&(n->childid[point]),0,1);
+                ++point;
+            }
+        }else{
+            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
+                __builtin_prefetch(&(n->childid[point]),0,1);
+                --point;
+            }
+            point++;
+        }
 #ifdef L0_TIME
         auto currentTime2 = std::chrono::high_resolution_clock::now();
         auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
         auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        if(btree_level==0){
-            exec_times[0] +=  (nanoseconds2 - nanoseconds1);
-            exec_counts[0]++;
-        }
+        exec_times[btree_level] +=  (nanoseconds2 - nanoseconds1);
+        exec_counts[btree_level]++;
 #endif
+
+#ifdef LINECOUNT_TIME
+        auto currentTime2 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        exec_times[0] +=  (nanoseconds2 - nanoseconds1);
+        exec_counts[0]++;
+#endif
+
+
+#ifdef COUNT_GAP
+        int gap = abs(pre_target-point) ;
+        gaps[btree_level] += gap;
+        gaps_count[btree_level]++;
+#endif
+        return point;
+
+    }
+
+
+
+
+
+    // template <typename node_type>
+    inline int find_lower_liner(const leaf_node* n, const key_type key ) const
+    {
+#ifdef LINECOUNT_TIME
+        auto currentTime1 = std::chrono::high_resolution_clock::now();
+#endif
+        if (n->slotuse == 0) return 0;
+        int lo = 0, hi = n->slotuse;
+        int pre_target,point;
+
+#ifdef L0_TIME
+        auto currentTime1 = std::chrono::high_resolution_clock::now();
+#endif
+
+        pre_target = static_cast<int>(n->fa * key + n->fb);
+
         pre_target = pre_target >= hi ? hi-1 : pre_target ;
         pre_target = pre_target < 0 ? 0 : pre_target;
         point = pre_target;
-        // __builtin_prefetch(&(n->slotkey[point-16>=0?point-16:0]),0,1);
-        // __builtin_prefetch(&(n->slotkey[point-8>=0?point-8:0]),0,1);
-        // __builtin_prefetch(&(n->slotkey[point]),0,1);
-        // __builtin_prefetch(&(n->slotkey[point+8<hi?point+8:0]),0,1);
-        // __builtin_prefetch(&(n->slotkey[point+16<hi?point+16:0]),0,1);
+
         if(n->slotkey[point] < key){
 
             while (point < hi && key_less(n->slotkey[point], key)) {
-                ++point;
                 // __builtin_prefetch(&(n->slotdata[point]),0,1);
+                ++point;
             }
         }else{
-
             while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                --point;
                 // __builtin_prefetch(&(n->slotdata[point]),0,1);
+                --point;
             }
             point++;
         }
+#ifdef L0_TIME
+        auto currentTime2 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        exec_times[btree_level] +=  (nanoseconds2 - nanoseconds1);
+        exec_counts[btree_level]++;
+#endif
 
 #ifdef LINECOUNT_TIME
         auto currentTime2 = std::chrono::high_resolution_clock::now();
@@ -2039,6 +2095,10 @@ cout_nodeinfo(n);
         // fitting
         n->fa = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
         n->fb = 0 - static_cast<double>(n->fa * y0);
+        // if(n->slotuse < 35){
+        //     n->fa = static_cast<double>(x4-x0) / static_cast<double>(ry4 - ry0);
+        //     n->fb = 0 - static_cast<double>(n->fa * ry0);
+        // }
 
 
 
@@ -2097,9 +2157,8 @@ cout_nodeinfo(n);
             n->fb = 0 - static_cast<double>(n->fa * y0) + err_num;
 
         }else{
-            fitting_liner(n,"liner_x2");
+            fitting_liner(n,"S_" + std::to_string(err_num));
         }
-
 
         return true;
     }
@@ -2148,49 +2207,12 @@ cout_nodeinfo(n);
 
         if(k0>k && k3<k){
             n->model_type = modelType::LINE;
-
-            // double y2x5 = (1/k3)*(1/k3)*(1/k3)*(1/k3)*(1/k3);
-            // double y1x5 = (1/k0)*(1/k0)*(1/k0)*(1/k0)*(1/k0);
-            // n->fb = (y2x5*((ry0+ry1)/2) - y1x5*((ry3+ry4)/2)) / (y1x5-y2x5);
-            // n->fa = k0/std::pow((ry0+ry1)/2+n->fb,5);
-            // n->fc = k0 - n->fa*(n->fb + (ry0+ry1)/2);
-
-            // n->fa = x4 / std::pow(ry4,6);
-            // n->fb = 0;
-            // n->fc = 0;
-
             n->fa = x2 / (y2-y0);
             n->fb = 0 - n->fa * y0;
-            n->fc = 0;
-
-            // n->model_type = modelType::GAPX6;
-            // double a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-            // n->fa = a1;
-            // n->fb = 0 - static_cast<double>(n->fa * y0);
-
         }else if(k0<k && k3>k){
             n->model_type = modelType::LINE;
-
-            // double y2x5 = (1/k3)*(1/k3)*(1/k3)*(1/k3)*(1/k3);
-            // double y1x5 = (1/k0)*(1/k0)*(1/k0)*(1/k0)*(1/k0);
-            // n->fb = (y2x5*((ry0+ry1)/2) - y1x5*((ry3+ry4)/2)) / (y1x5-y2x5);
-            // n->fa = k0/std::pow((ry0+ry1)/2+n->fb,5);
-            // n->fc = k3 - n->fa*(n->fb + (ry3+ry4)/2);
-
-            // n->fa = - x4 / std::pow(ry4,6);
-            // n->fb = -ry4;
-            // n->fc = x4;
-
-
             n->fa = x2 / (y4-y2);
             n->fb = x4 - n->fa * y4;
-            n->fc = 0;
-
-            // n->model_type = modelType::GAPX6;
-            // double a1 = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-            // n->fa = a1;
-            // n->fb = 0 - static_cast<double>(n->fa * y0);
-
         }else{
             fitting_liner(n,"liner_x6");
         }
@@ -2297,26 +2319,26 @@ cout_nodeinfo(n);
         compute_integrate(k, k7, b, b7, x7, x8, up, down);
         up_sum+=up; down_sum+=down;
 
-        fitting_liner(n,"sum_" + std::to_string(static_cast<int>((up_sum+down_sum)/ry8)));
+        // fitting_liner(n,"sum_" + std::to_string(static_cast<int>((up_sum+down_sum)/ry8)));
 
         double errs = (up_sum + down_sum)/ry8;
         if(errs < 8){
             fitting_liner(n,"sum_" + std::to_string(static_cast<int>(errs)));
         }
         else if(errs < 16){
-            fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
+            fitting_gap_x2(n,"sum_" + std::to_string(static_cast<int>(errs)),static_cast<int>(errs*0.8));
             // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
         }
         else if(errs < 32){
-            fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
+            fitting_gap_x2(n,"sum_" + std::to_string(static_cast<int>(errs)),static_cast<int>(errs*0.8));
             // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
         }
         else if(errs < 64){
-            fitting_gap_x2(n,"x2",static_cast<int>(errs*0.8));
+            fitting_gap_x2(n,"sum_" + std::to_string(static_cast<int>(errs)),static_cast<int>(errs*0.8));
             // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
         }
         else{
-            fitting_gap_x6(n,"x6");
+            fitting_gap_x6(n,"sum_" + std::to_string(static_cast<int>(errs)));
             // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
         }
         
@@ -2447,10 +2469,11 @@ public:
 
     
 
-    size_t* find_x(const key_type& key)
+    size_t* find_x(const key_type key)
     {
         btree_level = 0;
         node* n = m_root;
+        const inner_node* r = static_cast<const inner_node*>(n);
         if (!n) return nullptr;
 
         while (!n->isleafnode())
@@ -2461,10 +2484,14 @@ public:
             n = inner->childid[slot];
             btree_level++;
         }
-
         leaf_node* leaf = static_cast<leaf_node*>(n);
         // auto currentTime1 = std::chrono::high_resolution_clock::now();
         int slot = find_lower_x(leaf, key);
+        // __builtin_prefetch(&(r->slotuse),0,3);
+        // __builtin_prefetch(&(r->slotkey[0]),0,3);
+        // __builtin_prefetch(&(r->slotkey[8]),0,3);
+        // __builtin_prefetch(&(r->slotkey[16]),0,3);
+        // __builtin_prefetch(&(r->slotkey[24]),0,3);
 
         return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
                ? &(leaf->slotdata[slot]) : nullptr;

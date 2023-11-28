@@ -42,8 +42,8 @@ struct traits_nodebug : stx::btree_default_set_traits<KeyType> {
     static const bool selfverify = false;
     static const bool debug = false;
 
-    static const int  leafslots = 512;
-    static const int  innerslots = 512;
+    static const int  leafslots = 256;
+    static const int  innerslots = 256;
 };
 
 typedef stx::btree_multimap<size_t, size_t, std::less<size_t>, traits_nodebug<size_t> > btree_type;
@@ -157,8 +157,6 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
     << "\n";
 
     // return 0;
-    stx::exec_times[0] = 1;
-    stx::exec_counts[0] = 1;
 
     size_t states[2] = {0};
     for(int i=0;i<times;i++){
@@ -167,6 +165,8 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
             stx::gaps_count[j] = 0;
             stx::level_delay[j] = 0;
             stx::level_delay_count[j] = 1;
+            stx::exec_times[j] = 1;
+            stx::exec_counts[j] = 1;
         }
 
         unsigned long using_times1 = 0;
@@ -225,6 +225,8 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
         << " gap3:" << stx::gaps[3] / (stx::gaps_count[3]+1   )
         << " gap4:" << stx::gaps[4] / (stx::gaps_count[4]+1   )
         << " avg_exec_times:" << stx::exec_times[0] / stx::exec_counts[0] 
+        << " avg_exec_times:" << stx::exec_times[1] / stx::exec_counts[1] 
+        << " avg_exec_times:" << stx::exec_times[2] / stx::exec_counts[2] 
         <<  "\n";
         states[0] += using_times2;
     }
