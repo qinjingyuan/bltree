@@ -133,27 +133,14 @@ auto test_btree(std::vector<std::pair<size_t,size_t>> data,int count,int times) 
 auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times) -> bool{
     btree_type bt;
     bt.bulk_load_x(data.begin(),data.end());
-    std::cout << "data_distribution_inner " << stx::data_distribution_count_inner[0]  
-    << " " << stx::data_distribution_count_inner[1]  
-    << " " << stx::data_distribution_count_inner[2]  
-    << " " << stx::data_distribution_count_inner[3]  
-    << " " << stx::data_distribution_count_inner[4]  
-    << " " << stx::data_distribution_count_inner[5]  
-    << " " << stx::data_distribution_count_inner[6]  
-    << " " << stx::data_distribution_count_inner[7]  
-    << " " << stx::data_distribution_count_inner[8]  
-    << " " << stx::data_distribution_count_inner[9]  
-    << "\n";
-    std::cout << "data_distribution_leaf " << stx::data_distribution_count[0]  
-    << " " << stx::data_distribution_count[1]  
-    << " " << stx::data_distribution_count[2]  
-    << " " << stx::data_distribution_count[3]  
-    << " " << stx::data_distribution_count[4]  
-    << " " << stx::data_distribution_count[5]  
-    << " " << stx::data_distribution_count[6]  
-    << " " << stx::data_distribution_count[7]  
-    << " " << stx::data_distribution_count[8]  
-    << " " << stx::data_distribution_count[9]  
+    std::cout << "node_type_counts " 
+    << " " << stx::node_type_counts[0]  
+    << " " << stx::node_type_counts[1]  
+    << " " << stx::node_type_counts[2]  
+    << " " << stx::node_type_counts[3]  
+    << " " << stx::node_type_counts[4]
+    << " " << stx::node_type_counts[5]
+    << " " << stx::node_type_counts[6]
     << "\n";
 
     // return 0;
@@ -187,15 +174,21 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
         // return 1;
         for(int j=0;j<count;j++){
             int randomInt = intDistribution(gen);
+            size_t ttt = data[randomInt].first;
             auto currentTime1 = std::chrono::high_resolution_clock::now();
-            auto res = bt.find_x(data[randomInt].first);
+            auto res = bt.find_x(ttt);
+            // auto res = bt.find_x(data[randomInt].first);
             auto currentTime2 = std::chrono::high_resolution_clock::now();
             auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
             auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-            if(res == nullptr && data[randomInt].first != 0 ){
-                std::cout 
-                << data[randomInt].first  <<"\t"
-                << data[randomInt].second <<"\n" ;
+            // if(res == nullptr && data[randomInt].first != 0 ){
+            //     std::cout 
+            //     << data[randomInt].first  <<"\t"
+            //     << data[randomInt].second <<"\n" ;
+            // }
+            if(res){
+                // std::cout << data[randomInt].first << std::endl;
+                if(data[randomInt].first != *res) std::cout << data[randomInt].first <<" "<< *res << std::endl;
             }
             // if(res == bt.end() || data[randomInt].first != res->second){
             //     std::cout 
@@ -212,18 +205,18 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
         std::cout 
         << __func__ 
         << " insert用时-纳秒:" << using_times1 / count 
-        << " find用时-纳秒:" << using_times2 / count 
+        << " find用时-纳秒:" << static_cast<double>(using_times2) / count 
         << " 数据量-百万:" << bt.size()/1000000 
         << " level0:" << stx::level_delay[0] / stx::level_delay_count[0]  
         << " level1:" << stx::level_delay[1] / stx::level_delay_count[1]  
         << " level2:" << stx::level_delay[2] / stx::level_delay_count[2]  
         << " level3:" << stx::level_delay[3] / stx::level_delay_count[3]  
         << " level4:" << stx::level_delay[4] / stx::level_delay_count[4]  
-        << " gap0:" << stx::gaps[0] / (stx::gaps_count[0]+1   )
-        << " gap1:" << stx::gaps[1] / (stx::gaps_count[1]+1   )
-        << " gap2:" << stx::gaps[2] / (stx::gaps_count[2]+1   )
-        << " gap3:" << stx::gaps[3] / (stx::gaps_count[3]+1   )
-        << " gap4:" << stx::gaps[4] / (stx::gaps_count[4]+1   )
+        << " gap0:" << static_cast<double>(stx::gaps[0]) / (stx::gaps_count[0]+1   )
+        << " gap1:" << static_cast<double>(stx::gaps[1]) / (stx::gaps_count[1]+1   )
+        << " gap2:" << static_cast<double>(stx::gaps[2]) / (stx::gaps_count[2]+1   )
+        << " gap3:" << static_cast<double>(stx::gaps[3]) / (stx::gaps_count[3]+1   )
+        << " gap4:" << static_cast<double>(stx::gaps[4]) / (stx::gaps_count[4]+1   )
         << " avg_exec_times:" << stx::exec_times[0] / stx::exec_counts[0] 
         << " avg_exec_times:" << stx::exec_times[1] / stx::exec_counts[1] 
         << " avg_exec_times:" << stx::exec_times[2] / stx::exec_counts[2] 
@@ -263,14 +256,17 @@ auto test_alex(std::vector<std::pair<size_t,size_t>> data,int count,int times) -
         // }
         for(int j=0;j<count;j++){
             int randomInt = intDistribution(gen);
+            size_t ttt = data[randomInt].first;
             auto currentTime1 = std::chrono::high_resolution_clock::now();
-            auto res = index.get_payload(data[randomInt].first);
+            auto res = index.get_payload(ttt);
+            // auto res = index.get_payload(data[randomInt].first);
             // auto resd = *res;
             auto currentTime2 = std::chrono::high_resolution_clock::now();
             auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
             auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
             using_times2 += (nanoseconds2 - nanoseconds1);
             if(res){
+                // std::cout << data[randomInt].first << std::endl;
                 if(data[randomInt].first != *res) std::cout << data[randomInt].first <<" "<< *res << std::endl;
             }
         }

@@ -344,7 +344,7 @@ public:
         return tree.find(key);
     }
 
-    size_t* find_x(const key_type key)
+    size_t* find_x(const key_type& key)
     {
         return tree.find_x(key);
     }
@@ -358,7 +358,7 @@ public:
 
     /// Tries to locate a key in the B+ tree and returns the number of
     /// identical key entries found.
-    size_type count(const key_type& key) const
+    size_type count(const key_type key) const
     {
         return tree.count(key);
     }

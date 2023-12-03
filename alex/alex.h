@@ -398,7 +398,7 @@ class Alex {
 // node's parent.
 #if ALEX_SAFE_LOOKUP
   forceinline data_node_type* get_leaf(
-      T key, std::vector<TraversalNode>* traversal_path = nullptr) const {
+     const T& key, std::vector<TraversalNode>* traversal_path = nullptr) const {
     if (traversal_path) {
       traversal_path->push_back({superroot_, 0});
     }
@@ -981,7 +981,7 @@ class Alex {
   // Directly returns a pointer to the payload found through find(key)
   // This avoids the overhead of creating an iterator
   // Returns null pointer if there is no exact match of the key
-  P* get_payload(const T& key) const {
+  P* get_payload(const T key) const {
     stats_.num_lookups++;
     data_node_type* leaf = get_leaf(key);
     int idx = leaf->find_key(key);
