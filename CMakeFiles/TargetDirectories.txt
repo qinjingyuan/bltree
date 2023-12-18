@@ -1,3 +1,0 @@
-/home/qinjingyuan/index_opt/cmp_lab/CMakeFiles/rebuild_cache.dir
-/home/qinjingyuan/index_opt/cmp_lab/CMakeFiles/btree_opt.dir
-/home/qinjingyuan/index_opt/cmp_lab/CMakeFiles/edit_cache.dir

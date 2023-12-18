@@ -1860,22 +1860,37 @@ private:
         auto currentTime1 = std::chrono::high_resolution_clock::now();
 #endif
 
-        pt0 = static_cast<int>(n->fk[0] * static_cast<double>(key) + n->fb[0]);
-        pt1 = static_cast<int>(n->fk[1] * static_cast<double>(key) + n->fb[1]);
-        pt2 = static_cast<int>(n->fk[2] * static_cast<double>(key) + n->fb[2]);
+        pt0 = static_cast<int>(n->fk[0] * (key) + n->fb[0]);
+        pt1 = static_cast<int>(n->fk[1] * (key) + n->fb[1]);
+        pt2 = static_cast<int>(n->fk[2] * (key) + n->fb[2]);
 
-        if(n->model_type == modelType::LINE){
+        // std::cout << n->fk[0] << " " << n->fk[1] << " " << n->fk[2] << " \n";
+        // std::cout << n->fb[0] << " " << n->fb[1] << " " << n->fb[2] << " \n";
+        // std::cout << pt0 << " " << pt1 << " " << pt2 << " \n";
+
+        switch (n->model_type)
+        {
+        case modelType::LINE:
             pre_target = pt0;
-        }
-        else if(n->model_type == modelType::SX){
+            break;
+        
+        case modelType::SX:
             pre_target = getSecond(pt0,pt1,pt2);
-        }
-        else if(n->model_type == modelType::AO){
-            pre_target = std::min(std::min(pt0,pt1),pt2);
-        }
-        else{
+            break;
+        
+        case modelType::AO:
             pre_target = std::max(std::max(pt0,pt1),pt2);
+            break;
+        
+        case modelType::TU:
+            pre_target = std::min(std::min(pt0,pt1),pt2);
+            break;
+        
+        default:
+            pre_target = pt0;
+            break;
         }
+
         point = pre_target = std::min(std::max(pre_target,lo),hi-1);
 
         if(n->slotkey[point] < key){
@@ -1889,6 +1904,7 @@ private:
             }
             point++;
         }
+        // std::cout << pre_target << " "<<point<< "\n";
 #ifdef L0_TIME
         auto currentTime2 = std::chrono::high_resolution_clock::now();
         auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
@@ -2056,11 +2072,6 @@ private:
     template<typename T>
     bool node_training(T* n){
         // sure s1 != 0, define 5 site for compute k.
-        if(n->slotuse < 16) {
-            n->model_type = modelType::GENERAL;
-            // fitting_liner(n,"sum_less32");
-            return true;
-        }
 
 
         int hi,lo,ele_gap,ele_num;
@@ -2068,10 +2079,17 @@ private:
         hi = n->slotuse-1;
         lo = 0;
 
-        ele_gap = 32;
+        if(n->slotuse < 64) {
+            n->model_type = modelType::LINE;
+            n->fk[0] = static_cast<double>(hi - lo) / static_cast<double>(n->slotkey[hi] - n->slotkey[lo]);
+            n->fb[0] = lo - n->fk[0] * n->slotkey[lo];
+            return true;
+        }
+
+        ele_gap = 16;
         ele_num = hi/ele_gap+1;
-        std::vector<double> keys(ele_num);
-        std::vector<double> sites(ele_num);
+        std::vector<double> keys;
+        std::vector<double> sites;
         std::vector<double> ka(ele_num-1);
         std::vector<double> kb(ele_num-1);
 
@@ -2113,37 +2131,49 @@ private:
         double k2 = (y3-y2) / (x3 - x2);
         double k3 = (y4-y3) / (x4 - x3);
 
-        fa = (x4-x0) / (y4-y0);
-        fb - y0 - fa * x0;
-
+        fa = (sites[sites.size()-1] - sites[0]) / (keys[keys.size()-1] - keys[0]);
+        fb = sites[0] - fa * keys[0];
+        // std::cout << fa << " " << fb << "\n";
         errs = (up_sum + down_sum) / (keys[ele_num-1] - keys[0]);
+
+        n->model_type = modelType::LINE;
+        n->fk[0] = fa;
+        n->fb[0] = fb;
+        // std::cout << n->fk[0] << " " << n->fb[0] << "\n";
+
         if(errs < 8){
             n->model_type = modelType::LINE;
             n->fk[0] = fa;
             n->fb[0] = fb;
             node_type_counts[0]++;
         }
-        else if(errs < 16){
-            if(k > k0 && k < k3){
-                // 凸
-                n->model_type = modelType::LINE;
-                n->fk[0] = fa;
-                n->fb[0] = fb - 0.8*errs;
+        // else if(errs < 16){
+        //     if(k > k0 && k < k3){
+        //         // 凸
+        //         n->model_type = modelType::LINE;
+        //         n->fk[0] = fa;
+        //         n->fb[0] = fb - 0.8*errs;
 
-            }else if(k < k0 && k > k3){
-                // 凹
-                n->model_type = modelType::LINE;
-                n->fk[0] = fa;
-                n->fb[0] = fb + 0.8*errs;
-            }else{
-                n->model_type = modelType::LINE;
-                n->fk[0] = fa;
-                n->fb[0] = fb;
-            }
+        //     }else if(k < k0 && k > k3){
+        //         // 凹
+        //         n->model_type = modelType::LINE;
+        //         n->fk[0] = fa;
+        //         n->fb[0] = fb + 0.8*errs;
+        //     }else{
+        //         n->model_type = modelType::LINE;
+        //         n->fk[0] = fa;
+        //         n->fb[0] = fb;
+        //     }
+        // }
 
-        }
+        // else{
+        //     n->model_type = modelType::LINE;
+        //     n->fk[0] = fa;
+        //     n->fb[0] = fb;
+
+        // }
+
         else{
-
             std::vector<std::vector<double>> dp(ele_num,std::vector<double>(ele_num,0));
             // dp
             for(int i=0;i<ele_num;i++){
@@ -2151,7 +2181,11 @@ private:
                     dp[i][j] = meaning_distance(ka, kb, keys, sites, i, j);
                 }
             }
-
+            // int keys_size = keys.size();
+            // for(int i=0;i<keys_size;i++){
+            //     std::cout << keys[i] << " ";
+            // }
+            // std::cout << "\n";
             double min = DBL_MAX;
             int sp_site[4] = {0};
             for(int i=1;i<ele_num-2;i++){
@@ -2164,15 +2198,28 @@ private:
                         sp_site[3] = ele_num-1;
                         min = sum;
                     }
+                    // std::cout << sum << "\n";
                 }
             }
+            
+            // std::cout << "sum=" << min << "\n";
+            // std::cout << "===\n" ;
 
+            // for(auto e : sp_site){
+            //     std::cout << sites[e] <<  " "; 
+            // }
+            // std::cout << "\n";
+
+            // cout_nodeinfo(n);
             double final_k[3] = {0};
             double final_b[3] = {0};
             for(int i=0;i<3;i++){
-                final_k[i] = (sites[i+1] - sites[i]) / (keys[i+1] - keys[i])  ;
-                final_b[i] = sites[i] - final_k[i] * keys[i];
+                final_k[i] = (sites[sp_site[i+1]] - sites[sp_site[i]]) / (keys[sp_site[i+1]] - keys[sp_site[i]])  ;
+                // std::cout << keys[sp_site[i+1]] << "\n";
+                final_b[i] = sites[sp_site[i]] - final_k[i] * keys[sp_site[i]];
+
             }
+            // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
 
             if(k > final_k[0] && k < final_k[2]){
                 // 凸
@@ -2194,8 +2241,10 @@ private:
                 // small S
                 n->model_type = modelType::SX;
             }
+            // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
             memcpy(n->fk,final_k,sizeof(final_k));
             memcpy(n->fb,final_b,sizeof(final_b));
+            // std::cout << n->fk[0] << " " << n->fk[1] << " " << n->fk[2] << "\n";
         }
 
         n->insert_count = 0;
