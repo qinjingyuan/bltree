@@ -88,8 +88,10 @@ auto test_btree(std::vector<std::pair<size_t,size_t>> data,int count,int times) 
 
         for(int j=0;j<count;j++){
             int randomInt = intDistribution(gen);
+            auto ttt =  data[randomInt].first;
             auto currentTime1 = std::chrono::high_resolution_clock::now();
             auto res = bt.find(data[randomInt].first);
+            // auto res = bt.find(ttt);
 
             auto currentTime2 = std::chrono::high_resolution_clock::now();
             auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
@@ -176,8 +178,8 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
             int randomInt = intDistribution(gen);
             size_t ttt = data[randomInt].first;
             auto currentTime1 = std::chrono::high_resolution_clock::now();
-            auto res = bt.find_x(ttt);
-            // auto res = bt.find_x(data[randomInt].first);
+            // auto res = bt.find_x(ttt);
+            auto res = bt.find_x(data[randomInt].first);
             auto currentTime2 = std::chrono::high_resolution_clock::now();
             auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
             auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
@@ -258,8 +260,8 @@ auto test_alex(std::vector<std::pair<size_t,size_t>> data,int count,int times) -
             int randomInt = intDistribution(gen);
             size_t ttt = data[randomInt].first;
             auto currentTime1 = std::chrono::high_resolution_clock::now();
-            auto res = index.get_payload(ttt);
-            // auto res = index.get_payload(data[randomInt].first);
+            // auto res = index.get_payload(ttt);
+            auto res = index.get_payload(data[randomInt].first);
             // auto resd = *res;
             auto currentTime2 = std::chrono::high_resolution_clock::now();
             auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();

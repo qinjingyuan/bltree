@@ -38,7 +38,7 @@ add_definitions(-DCOUNT_GAP)
 # add_definitions(-DX6COUNT_TIME)
 # add_definitions(-DLEVEL_COUNT_TIME)
 # add_definitions(-DL0_TIME)
-add_definitions(-DNODE_TYPE_COUNTS)
+# add_definitions(-DNODE_TYPE_COUNTS)
 
 
 

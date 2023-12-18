@@ -40,7 +40,7 @@
  */
 
 // *** Required Headers from the STL
-
+#include <bits/stdc++.h>
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
@@ -107,7 +107,7 @@ size_t table_x3[] = {0,1,8,27,64,125,216,343,512,729,1000,1331,1728,2197,2744,33
 size_t table_x4[] = {0,1,16,81,256,625,1296,2401,4096,6561,10000,14641,20736,28561,38416,50625,65536,83521,104976,130321,160000,194481,234256,279841,331776,390625,456976,531441,614656,707281,810000,923521,1048576,1185921,1336336,1500625,1679616,1874161,2085136,2313441,2560000,2825761,3111696,3418801,3748096,4100625,4477456,4879681,5308416,5764801,6250000,6765201,7311616,7890481,8503056,9150625,9834496,10556001,11316496,12117361,12960000,13845841,14776336,15752961,16777216,17850625,18974736,20151121,21381376,22667121,24010000,25411681,26873856,28398241,29986576,31640625,33362176,35153041,37015056,38950081,40960000,43046721,45212176,47458321,49787136,52200625,54700816,57289761,59969536,62742241,65610000,68574961,71639296,74805201,78074896,81450625,84934656,88529281,92236816,96059601,100000000,104060401,108243216,112550881,116985856,121550625,126247696,131079601,136048896,141158161,146410000,151807041,157351936,163047361,168896016,174900625,181063936,187388721,193877776,200533921,207360000,214358881,221533456,228886641,236421376,244140625,252047376,260144641,268435456,276922881,285610000,294499921,303595776,312900721,322417936,332150625,342102016,352275361,362673936,373301041,384160000,395254161,406586896,418161601,429981696,442050625,454371856,466948881,479785216,492884401,506250000,519885601,533794816,547981281,562448656,577200625,592240896,607573201,623201296,639128961,655360000,671898241,688747536,705911761,723394816,741200625,759333136,777796321,796594176,815730721,835210000,855036081,875213056,895745041,916636176,937890625,959512576,981506241,1003875856,1026625681,1049760000,1073283121,1097199376,1121513121,1146228736,1171350625,1196883216,1222830961,1249198336,1275989841,1303210000,1330863361,1358954496,1387488001,1416468496,1445900625,1475789056,1506138481,1536953616,1568239201,1600000000,1632240801,1664966416,1698181681,1731891456,1766100625,1800814096,1836036801,1871773696,1908029761,1944810000,1982119441,2019963136,2058346161,2097273616,2136750625,2176782336,2217373921,2258530576,2300257521,2342560000,2385443281,2428912656,2472973441,2517630976,2562890625,2608757776,2655237841,2702336256,2750058481,2798410000,2847396321,2897022976,2947295521,2998219536,3049800625,3102044416,3154956561,3208542736,3262808641,3317760000,3373402561,3429742096,3486784401,3544535296,3603000625,3662186256,3722098081,3782742016,3844124001,3906250000,3969126001,4032758016,4097152081,4162314256,4228250625,4294967296,4362470401,4430766096,4499860561,4569760000,4640470641,4711998736,4784350561,4857532416,4931550625,5006411536,5082121521,5158686976,5236114321,5314410000,5393580481,5473632256,5554571841,5636405776,5719140625,5802782976,5887339441,5972816656,6059221281,6146560000,6234839521,6324066576,6414247921,6505390336,6597500625,6690585616,6784652161,6879707136,6975757441,7072810000,7170871761,7269949696,7370050801,7471182096,7573350625,7676563456,7780827681,7886150416,7992538801,8100000000,8208541201,8318169616,8428892481,8540717056,8653650625,8767700496,8882874001,8999178496,9116621361,9235210000,9354951841,9475854336,9597924961,9721171216,9845600625,9971220736,10098039121,10226063376,10355301121,10485760000,10617447681,10750371856,10884540241,11019960576,11156640625,11294588176,11433811041,11574317056,11716114081,11859210000,12003612721,12149330176,12296370321,12444741136,12594450625,12745506816,12897917761,13051691536,13206836241,13363360000,13521270961,13680577296,13841287201,14003408896,14166950625,14331920656,14498327281,14666178816,14835483601,15006250000,15178486401,15352201216,15527402881,15704099856,15882300625,16062013696,16243247601,16426010896,16610312161,16796160000,16983563041,17172529936,17363069361,17555190016,17748900625,17944209936,18141126721,18339659776,18539817921,18741610000,18945044881,19150131456,19356878641,19565295376,19775390625,19987173376,20200652641,20415837456,20632736881,20851360000,21071715921,21293813776,21517662721,21743271936,21970650625,22199808016,22430753361,22663495936,22898045041,23134410000,23372600161,23612624896,23854493601,24098215696,24343800625,24591257856,24840596881,25091827216,25344958401,25600000000,25856961601,26115852816,26376683281,26639462656,26904200625,27170906896,27439591201,27710263296,27982932961,28257610000,28534304241,28813025536,29093783761,29376588816,29661450625,29948379136,30237384321,30528476176,30821664721,31116960000,31414372081,31713911056,32015587041,32319410176,32625390625,32933538576,33243864241,33556377856,33871089681,34188010000,34507149121,34828517376,35152125121,35477982736,35806100625,36136489216,36469158961,36804120336,37141383841,37480960000,37822859361,38167092496,38513670001,38862602496,39213900625,39567575056,39923636481,40282095616,40642963201,41006250000,41371966801,41740124416,42110733681,42483805456,42859350625,43237380096,43617904801,44000935696,44386483761,44774560000,45165175441,45558341136,45954068161,46352367616,46753250625,47156728336,47562811921,47971512576,48382841521,48796810000,49213429281,49632710656,50054665441,50479304976,50906640625,51336683776,51769445841,52204938256,52643172481,53084160000,53527912321,53974440976,54423757521,54875873536,55330800625,55788550416,56249134561,56712564736,57178852641,57648010000,58120048561,58594980096,59072816401,59553569296,60037250625,60523872256,61013446081,61505984016,62001498001,62500000000,63001502001,63506016016,64013554081,64524128256,65037750625,65554433296,66074188401,66597028096,67122964561,67652010000,68184176641};
 size_t table_x6[] = {0,1,64,729,4096,15625,46656,117649,262144,531441,1000000,1771561,2985984,4826809,7529536,11390625,16777216,24137569,34012224,47045881,64000000,85766121,113379904,148035889,191102976,244140625,308915776,387420489,481890304,594823321,729000000,887503681,1073741824,1291467969,1544804416,1838265625,2176782336,2565726409,3010936384,3518743761,4096000000,4750104241,5489031744,6321363049,7256313856,8303765625,9474296896,10779215329,12230590464,13841287201,15625000000,17596287801,19770609664,22164361129,24794911296,27680640625,30840979456,34296447249,38068692544,42180533641,46656000000,51520374361,56800235584,62523502209,68719476736,75418890625,82653950016,90458382169,98867482624,107918163081,117649000000,128100283921,139314069504,151334226289,164206490176,177978515625,192699928576,208422380089,225199600704,243087455521,262144000000,282429536481,304006671424,326940373369,351298031616,377149515625,404567235136,433626201009,464404086784,496981290961,531441000000,567869252041,606355001344,646990183449,689869781056,735091890625,782757789696,832972004929,885842380864,941480149401,1000000000000,1061520150601,1126162419264,1194052296529,1265319018496,1340095640625,1418519112256,1500730351849,1586874322944,1677100110841,1771561000000,1870414552161,1973822685184,2081951752609,2194972623936,2313060765625,2436396322816,2565164201769,2699554153024,2839760855281,2985984000000,3138428376721,3297303959104,3462825991689,3635215077376,3814697265625,4001504141376,4195872914689,4398046511104,4608273662721,4826809000000,5053913144281,5289852801024,5534900853769,5789336458816,6053445140625,6327518887936,6611856250609,6906762437184,7212549413161,7529536000000,7858047974841,8198418170944,8550986578849,8916100448256,9294114390625,9685390482496,10090298369529,10509215371264,10942526586601,11390625000000,11853911588401,12332795428864,12827693806929,13339032325696,13867245015625,14412774445056,14976071831449,15557597153344,16157819263041,16777216000000,17416274304961,18075490334784,18755369578009,19456426971136,20179187015625,20924183895616,21691961596369,22483074023424,23298085122481,24137569000000,25002110044521,25892303048704,26808753332089,27752076864576,28722900390625,29721861554176,30749609024289,31806802621504,32894113444921,34012224000000,35161828327081,36343632130624,37558352909169,38806720086016,40089475140625,41407371740736,42761175875209,44151665987584,45579633110361,47045881000000,48551226272641,50096498540544,51682540549249,53310208315456,54980371265625,56693912375296,58451728309129,60254729561664,62103840598801,64000000000000,65944160601201,67937289638464,69980368892329,72074394832896,74220378765625,76419346977856,78672340886049,80980417183744,83344647990241,85766121000000,88245939632761,90785223184384,93385106978409,96046742518336,98771297640625,101559956668416,104413920565969,107334407093824,110322650964681,113379904000000,116507435287321,119706531338304,122978496247489,126324651851776,129746337890625,133244912166976,136821750708889,140478247931904,144215816802121,148035889000000,151939915084881,155929364660224,160005726539569,164170508913216,168425239515625,172771465793536,177210755074809,181744694737984,186374892382561,191102976000000,195930594145441,200859416110144,205891132094649,211027453382656,216270112515625,221620863468096,227081481823729,232653764952064,238339532186001,244140625000000,250058907189001,256096265048064,262254607552729,268535866540096,274941996890625,281474976710656,288136807515649,294929514414144,301855146292441,308915776000000,316113500535561,323450441233984,330928743953809,338550579265536,346318142640625,354233654641216,362299361110569,370517533364224,378890468381881,387420489000000,396109944105121,404961208827904,413976684737889,423158800038976,432510009765625,442032795979776,451729667968489,461603162442304,471655843734321,481890304000000,492309163417681,502915070389824,513710701744969,524698762940416,535881988265625,547263141046336,558845013849409,570630428688384,582622237229761,594823321000000,607236591593241,619864990879744,632711491215049,645779095649856,659070838140625,672589783760896,686339028913329,700321701542464,714540961348201,729000000000000,743702041351801,758650341657664,773848189788129,789298907447296,805005849390625,820972403643456,837201991720249,853698068844544,870464124169641,887503681000000,904820297013361,922417564483584,940299110504209,958468597212736,976929722015625,995686217814016,1014741853230169,1034100432834624,1053765797374081,1073741824000000,1094032426497921,1114641555517504,1135573198803289,1156831381426176,1178420166015625,1200343652992576,1222605980803089,1245211326152704,1268163904241521,1291467969000000,1315127813325481,1339147769319424,1363532208525369,1388285542167616,1413412221390625,1438916737499136,1464803622199009,1491077447838784,1517742827651961,1544804416000000,1572266908616041,1600135042849344,1628413597910449,1657107395117056,1686221298140625,1715760213253696,1745729089577929,1776132919332864,1806976738085401,1838265625000000,1870004703089601,1902199139467264,1934854145598529,1967974977554496,2001566936265625,2035635367776256,2070185663499849,2105223260474944,2140753641621841,2176782336000000,2213314919066161,2250357012933184,2287914286629609,2325992456359936,2364597285765625,2403734586186816,2443410216924769,2483630085505024,2524400147941281,2565726409000000,2607614922465721,2650071791407104,2693103168443689,2736715256013376,2780914306640625,2825706623205376,2871098559212689,2917096519063104,2963706958323721,3010936384000000,3058791354808281,3107278481449024,3156404426880769,3206175906594816,3256599688890625,3307682595151936,3359431500123609,3411853332189184,3464955073649161,3518743761000000,3573226485213841,3628410392018944,3684302682180849,3740910611784256,3798241492515625,3856302691946496,3915101633817529,3974645798323264,4034942722397601,4096000000000000,4157825282402401,4220426278476864,4283810754983929,4347986536861696,4412961507515625,4478743609109056,4545340842854449,4612761269305344,4681013008649041,4750104241000000,4820043206693961,4890838206582784,4962497602330009,5035029816707136,5108443333890625,5182746699759616,5257948522194369,5334057471375424,5411082280083481,5489031744000000,5567914722008521,5647740136496704,5728516973659089,5810254283800576,5892961181640625,5976646846618176,6061320523197289,6146991521173504,6233669215980921,6321363049000000,6410082527866081,6499837226778624,6590636786811169,6682490916222016,6775409390765625,6869402054004736,6964478817623209,7060649661739584,7157924635221361,7256313856000000,7355827511386641,7456475858388544,7558269224026249,7661218005651456,7765332671265625,7870623759839296,7977101881632129,8084777718513664,8193662024284801,8303765625000000,8415099419290201,8527674378686464,8641501547944329,8756592045368896,8872957063140625,8990607867641856,9109555799784049,9229812275335744,9351388785251241,9474296896000000,9598548249896761,9724154565432384,9851127637605409,9979479338254336,10109221616390625,10240366498532416,10372926089038969,10506912570445824,10642338203800681,10779215329000000,10917556365126321,11057373810786304,11198680244449489,11341488324787776,11485810791015625,11631660463230976,11779050242756889,11927993112483904,12078502137213121,12230590464000000,12384271322498881,12539558025308224,12696463968316569,12855002631049216,13015187577015625,13177032454057536,13340550994697809,13505757016489984,13672664422368561,13841287201000000,14011639427134441,14183735261958144,14357588953446649,14533214836718656,14710627334390625,14889840956932096,15070870303021729,15253730059904064,15438435003747001,15625000000000000,15813440003753001,16003770060096064,16196005304479729,16390160963076096,16586252353140625,16784294883374656,16984304054288649,17186295458566144,17390284781428441,17596287801000000,17804320388674561};
 
-enum modelType  {LINE=0,BINOMIAL,GENERAL,X4,SINX001,X2,LINE_X,X3,X2R,X2D,LINE_EXP,GAPX6,GAPX2,GAPX3,LINE_INT,S1,S2};
+enum modelType  {LINE=0,BINOMIAL,GENERAL,X4,SINX001,X2,LINE_X,X3,X2R,X2D,LINE_EXP,GAPX6,GAPX2,GAPX3,LINE_INT,S1,S2,TU,AO,SX,LN};
 
 
 
@@ -341,13 +341,12 @@ private:
         // bool reverse = false;
         // u_int8_t right_move = 0;
         // Polynomial variable
-        double fa = 0;
-        double fb = 0;
-        double fc = 0;
-        double fd = 0;
-        int key_move_bits = 0;
-        size_t value_base = 0;
-        key_type model_max_key;
+        double fk[3] = {0};
+        double fb[3] = {0};
+
+        // int key_move_bits = 0;
+        // size_t value_base = 0;
+        // key_type model_max_key;
         // double fe = 0;
         // size_t rfa = 0;
         // size_t rfb = 0;
@@ -1829,54 +1828,63 @@ private:
 
 
 
+    // 第一种方法:用三个数的和减去最大数和最小数
+    
+    // 获得三个数中的中间数
+    int getSecond(int a,int b,int c){
+        int max = a > b ? a : b;
+        max = max > c ? max : c;
+        int min = a < b ? a: b;
+        min = min < c ? min : c;
+        int second = a + b + c - max - min;
+        return second;
+    }
+
     template <typename node_type>
-    inline int find_lower_liner(const node_type* n, const key_type& key )
+    inline int find_lower_liner_x(const node_type* n, const key_type& key )
     {
+
+        if(n->model_type == modelType::GENERAL){
+            return find_lower(n, key);
+        }
+
 #ifdef LINECOUNT_TIME
         auto currentTime1 = std::chrono::high_resolution_clock::now();
 #endif
         if (n->slotuse == 0) return 0;
         int lo = 0, hi = n->slotuse;
         int pre_target,point;
+        int pt0,pt1,pt2;
 
 #ifdef L0_TIME
         auto currentTime1 = std::chrono::high_resolution_clock::now();
 #endif
 
-        pre_target = static_cast<int>(n->fa * static_cast<double>(key) + n->fb);
-        int pre_target_bak = static_cast<int>(n->fc * static_cast<double>(key) + n->fd);
-        if(n->model_type == modelType::S1 && pre_target >= (hi>>1)){
-            pre_target = pre_target_bak;
-        }else if(n->model_type == modelType::S2 && pre_target <= (hi>>1)){
-            pre_target = pre_target_bak;
+        pt0 = static_cast<int>(n->fk[0] * static_cast<double>(key) + n->fb[0]);
+        pt1 = static_cast<int>(n->fk[1] * static_cast<double>(key) + n->fb[1]);
+        pt2 = static_cast<int>(n->fk[2] * static_cast<double>(key) + n->fb[2]);
+
+        if(n->model_type == modelType::LINE){
+            pre_target = pt0;
         }
-        point = pre_target = std::max(std::min(pre_target,hi-1),0);
+        else if(n->model_type == modelType::SX){
+            pre_target = getSecond(pt0,pt1,pt2);
+        }
+        else if(n->model_type == modelType::AO){
+            pre_target = std::min(std::min(pt0,pt1),pt2);
+        }
+        else{
+            pre_target = std::max(std::max(pt0,pt1),pt2);
+        }
+        point = pre_target = std::min(std::max(pre_target,lo),hi-1);
 
-        // int bound = 1;
-        // if(n->slotkey[point] < key){
-
-        //     while (point+bound < hi && key_less(n->slotkey[point+bound], key)) {
-        //         // __builtin_prefetch(&(n->childid[point]),0,1);
-        //         bound *= 2;
-        //     }
-        //     point = binary_search(n, point+(bound/2),std::min(point+bound,hi),key);
-        // }else{
-        //     while (lo <= point-bound && key_greaterequal(n->slotkey[point-bound], key)) {
-        //         // __builtin_prefetch(&(n->childid[point]),0,1);
-        //         bound *= 2;
-        //     }
-        //     point = binary_search(n, std::max(point-bound,0),point-(bound/2),key);
-        //     // point++;
-        // }
         if(n->slotkey[point] < key){
 
             while (point < hi && key_less(n->slotkey[point], key)) {
-                // __builtin_prefetch(&(n->childid[point]),0,1);
                 point++;
             }
         }else{
             while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
-                // __builtin_prefetch(&(n->childid[point]),0,1);
                 point--;
             }
             point++;
@@ -1907,30 +1915,6 @@ private:
 
     }
 
-
-    template <typename node_type>
-    inline int find_lower_x(const node_type* n, const key_type& key ) const
-    {
-        // if(btree_level==0){
-        //     cout_nodeinfo(n);
-        // }
-#ifdef LEVEL_COUNT_TIME
-        auto currentTime1 = std::chrono::high_resolution_clock::now();
-#endif
-
-        int res = find_lower_liner(n,key);
-
-#ifdef LEVEL_COUNT_TIME
-        auto currentTime2 = std::chrono::high_resolution_clock::now();
-        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        // if(btree_level == 0)
-        level_delay[btree_level] += (nanoseconds2 - nanoseconds1);
-        level_delay_count[btree_level]++;
-#endif
-        return res;
-
-    }
 
     template<typename T>
     void cout_nodeinfo(const T* n) const{
@@ -2028,268 +2012,6 @@ private:
     }
 
 
-    template<typename T>
-    bool fitting_liner(T* n, std::string flag){
-#ifdef MYDEBUG
-std::cout <<  flag << " ";
-cout_nodeinfo(n);
-#endif
-        n->model_type = modelType::LINE;
-
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-
-        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
-        size_t value_base = n->slotkey[x0];
-        int first1 = get_first_1_site(value_gaps) ;
-        int right_move_bits = first1 > 16 ? first1 - 16 : 0;
-        n->value_base = value_base;
-        n->key_move_bits = right_move_bits;
-        // 计算4段数据的斜率
-        auto y0 = static_cast<double>(n->slotkey[x0]);
-        auto y1 = static_cast<double>(n->slotkey[x1]);
-        auto y2 = static_cast<double>(n->slotkey[x2]);
-        auto y3 = static_cast<double>(n->slotkey[x3]);
-        auto y4 = static_cast<double>(n->slotkey[x4]);
-
-        // 计算4段数据的斜率
-        auto ry0 = static_cast<double>((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
-        auto ry1 = static_cast<double>((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
-        auto ry2 = static_cast<double>((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
-        auto ry3 = static_cast<double>((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
-        auto ry4 = static_cast<double>((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
-        // 求k
-        double k0 = (ry1-ry0) / (x1 - x0);
-        double k1 = (ry2-ry1) / (x2 - x1);
-        double k2 = (ry3-ry2) / (x3 - x2);
-        double k3 = (ry4-ry3) / (x4 - x3);
-        double k = (ry4-ry0) / (x4 - x0);
-
-        // fitting
-        n->fa = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-        n->fb = 0 - static_cast<double>(n->fa * y0);
-        // if(n->slotuse < 35){
-        //     n->fa = static_cast<double>(x4-x0) / static_cast<double>(ry4 - ry0);
-        //     n->fb = 0 - static_cast<double>(n->fa * ry0);
-        // }
-
-
-
-        return true;
-    }
-
-
-    template<typename T>
-    bool fitting_gap_x2(T* n, std::string flag,int err_num){
-
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-        auto y0 = static_cast<double>(n->slotkey[x0]);
-        auto y1 = static_cast<double>(n->slotkey[x1]);
-        auto y2 = static_cast<double>(n->slotkey[x2]);
-        auto y3 = static_cast<double>(n->slotkey[x3]);
-        auto y4 = static_cast<double>(n->slotkey[x4]);
-
-
-        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
-        size_t value_base = n->slotkey[x0];
-        int first1 = get_first_1_site(value_gaps) ;
-        int right_move_bits = first1 > 24 ? first1 - 24 : 0;
-        n->value_base = value_base;
-        n->key_move_bits = right_move_bits;
-        // 计算4段数据的斜率
-        auto ry0 = static_cast<double>((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
-        auto ry1 = static_cast<double>((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
-        auto ry2 = static_cast<double>((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
-        auto ry3 = static_cast<double>((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
-        auto ry4 = static_cast<double>((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
-        // 求k
-        double k0 = (ry1-ry0) / (x1 - x0);
-        double k1 = (ry2-ry1) / (x2 - x1);
-        double k2 = (ry3-ry2) / (x3 - x2);
-        double k3 = (ry4-ry3) / (x4 - x3);
-        double k = (ry4-ry0) / (x4 - x0);
-
-        if(k0 > k && k3 < k){
-#ifdef MYDEBUG
-std::cout << flag << " ";
-cout_nodeinfo(n);
-#endif
-
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[1]++;
-#endif
-            n->model_type = modelType::LINE;
-            n->fa = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-            n->fb = 0 - static_cast<double>(n->fa * y0) - err_num;
-
-        }
-        else if(k0 < k && k3 >k){
-#ifdef MYDEBUG
-std::cout << flag << " ";
-cout_nodeinfo(n);
-#endif
-
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[1]++;
-#endif
-            n->model_type = modelType::LINE;
-            n->fa = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
-            n->fb = 0 - static_cast<double>(n->fa * y0) + err_num;
-        }
-        else if(k0 > k && k3 >k && err_num > 32){
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[5]++;
-#endif
-            n->model_type = modelType::LINE;
-            n->fa = static_cast<double>(x3-x1) / static_cast<double>(y3 - y1);
-            n->fb = x1 - static_cast<double>(n->fa * y1);
-        }
-        else if(k0 < k && k3 <k && err_num > 48){
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[6]++;
-#endif
-            if(k1>k2){
-                n->model_type = modelType::S2;
-                n->fa = static_cast<double>(x4-x2) / static_cast<double>(y4 - y2);
-                n->fb = x2 - static_cast<double>(n->fa * y2);
-                n->fc = static_cast<double>(x1-x0) / static_cast<double>(y1 - y0);
-                n->fd = x0 - static_cast<double>(n->fa * y0);
-
-            }else{
-                n->model_type = modelType::S1;
-                n->fa = static_cast<double>(x2-x0) / static_cast<double>(y2 - y0);
-                n->fb = x0 - static_cast<double>(n->fa * y0);
-                n->fc = static_cast<double>(x4-x3) / static_cast<double>(y4 - y3);
-                n->fd = x3 - static_cast<double>(n->fa * y3);
-
-            }
-        }
-        else{
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[1]++;
-#endif
-            fitting_liner(n,"S_" + std::to_string(err_num));
-
-        }
-
-        return true;
-    }
-
-
-
-    template<typename T>
-    bool fitting_gap_x6(T* n, std::string flag){
-
-        // array sites
-        int x4 = n->slotuse - 1;
-        int x2 = x4 >> 1;
-        int x1 = x2 >> 1;
-        int x3 = x2 + x1;
-        int x0 = 0;
-
-
-        size_t value_gaps = n->slotkey[x4] - n->slotkey[x0];
-        size_t value_base = n->slotkey[x0];
-        int first1 = get_first_1_site(value_gaps) ;
-        int right_move_bits = first1 > 8 ? first1 - 8 : 0;
-        n->value_base = value_base;
-        n->key_move_bits = right_move_bits;
-        // 计算4段数据的斜率
-        auto y0 = static_cast<double>(n->slotkey[x0]);
-        auto y1 = static_cast<double>(n->slotkey[x1]);
-        auto y2 = static_cast<double>(n->slotkey[x2]);
-        auto y3 = static_cast<double>(n->slotkey[x3]);
-        auto y4 = static_cast<double>(n->slotkey[x4]);
-
-        // 计算4段数据的斜率
-        auto ry0 = static_cast<double>((n->slotkey[x0] - n->slotkey[x0]) >> right_move_bits);
-        auto ry1 = static_cast<double>((n->slotkey[x1] - n->slotkey[x0]) >> right_move_bits);
-        auto ry2 = static_cast<double>((n->slotkey[x2] - n->slotkey[x0]) >> right_move_bits);
-        auto ry3 = static_cast<double>((n->slotkey[x3] - n->slotkey[x0]) >> right_move_bits);
-        auto ry4 = static_cast<double>((n->slotkey[x4] - n->slotkey[x0]) >> right_move_bits);
-        // 求k
-        double k0 = (ry1-ry0) / (x1 - x0);
-        double k1 = (ry2-ry1) / (x2 - x1);
-        double k2 = (ry3-ry2) / (x3 - x2);
-        double k3 = (ry4-ry3) / (x4 - x3);
-        double k = (ry4-ry0) / (x4 - x0);
-
-        if(k0>k && k3<k){
-#ifdef MYDEBUG
-std::cout << "tu_" << " ";
-cout_nodeinfo(n);
-#endif
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[3]++;
-#endif
-            n->model_type = modelType::LINE;
-            n->fa = x2 / (y2-y0);
-            n->fb = 0 - n->fa * y0;
-        }else if(k0<k && k3>k){
-#ifdef MYDEBUG
-std::cout << "ao_" << " ";
-cout_nodeinfo(n);
-#endif
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[2]++;
-#endif
-            n->model_type = modelType::LINE;
-            n->fa = x2 / (y4-y2);
-            n->fb = x4 - n->fa * y4;
-        }
-        
-        
-        else if(k0 > k && k3 >k  ){
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[5]++;
-#endif
-            n->model_type = modelType::LINE;
-            n->fa = static_cast<double>(x3-x1) / static_cast<double>(y3 - y1);
-            n->fb = x1 - static_cast<double>(n->fa * y1);
-        }
-        else if(k0 < k && k3 <k  ){
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[6]++;
-#endif
-            if(k1>k2){
-                n->model_type = modelType::S2;
-                n->fa = static_cast<double>(x4-x3) / static_cast<double>(y4 - y3);
-                n->fb = x3 - static_cast<double>(n->fa * y3);
-                n->fc = static_cast<double>(x1-x0) / static_cast<double>(y1 - y0);
-                n->fd = x0 - static_cast<double>(n->fa * y0);
-
-            }else{
-                n->model_type = modelType::S1;
-                n->fa = static_cast<double>(x1-x0) / static_cast<double>(y1 - y0);
-                n->fb = x0 - static_cast<double>(n->fa * y0);
-                n->fc = static_cast<double>(x4-x3) / static_cast<double>(y4 - y3);
-                n->fd = x3 - static_cast<double>(n->fa * y3);
-
-            }
-        }
-        
-        
-        else{
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[4]++;
-#endif
-            fitting_liner(n,"liner_x6");
-        }
-        return true;
-    }
-
-
     inline bool compute_integrate(double k1,double k2, double b1, double b2, int x1, int x2,double& up,double& down){
         if(x1>x2) return 0;
         double sum=0;
@@ -2314,7 +2036,25 @@ node_type_counts[4]++;
 
     // generate duoxiangshi model
     template<typename T>
-    bool generate_func_model(T* n){
+    inline bool generate_func_model(T* n){
+        return node_training(n);
+    }
+
+    double meaning_distance(std::vector<double>& fa, std::vector<double>& fb, std::vector<double>& keys, std::vector<double>& sites, int begin, int end){
+        double k,b,up=0,down=0,sum_up=0,sum_dowm=0;
+        k = (keys[end] - keys[begin]) / (sites[end] - sites[begin]);
+        b = keys[begin] - k * sites[begin];
+        for(int i=begin;i<end;i++){
+            compute_integrate(k, fa[i], b, fb[i], sites[i], sites[i+1], up, down);
+            sum_dowm+=down;
+            sum_up+=up;
+        } 
+        return sum_up + sum_dowm;
+    }
+
+    // generate duoxiangshi model
+    template<typename T>
+    bool node_training(T* n){
         // sure s1 != 0, define 5 site for compute k.
         if(n->slotuse < 16) {
             n->model_type = modelType::GENERAL;
@@ -2322,99 +2062,142 @@ node_type_counts[4]++;
             return true;
         }
 
-        // array sites
-        int xbase = n->slotuse >> 3;
-        int x0 = 0;
-        int x1 = x0  + xbase;
-        int x2 = x1  + xbase;
-        int x3 = x2  + xbase;
-        int x4 = x3  + xbase;
-        int x5 = x4  + xbase;
-        int x6 = x5  + xbase;
-        int x7 = x6  + xbase;
-        int x8 = n->slotuse - 1;
 
-        size_t value_gaps = n->slotkey[x8] - n->slotkey[x0];
-        // size_t value_base = n->slotkey[x0];
-        double reduce_x = static_cast<double>(value_gaps) / 256.0;
+        int hi,lo,ele_gap,ele_num;
+        double up_sum=0,down_sum=0,k=0,b=0,errs=0,fa=0,fb=0;
+        hi = n->slotuse-1;
+        lo = 0;
 
-        // 计算4段数据的斜率
-        auto ry0 = static_cast<double>(n->slotkey[x0] - n->slotkey[x0]) / reduce_x;
-        auto ry1 = static_cast<double>(n->slotkey[x1] - n->slotkey[x0]) / reduce_x;
-        auto ry2 = static_cast<double>(n->slotkey[x2] - n->slotkey[x0]) / reduce_x;
-        auto ry3 = static_cast<double>(n->slotkey[x3] - n->slotkey[x0]) / reduce_x;
-        auto ry4 = static_cast<double>(n->slotkey[x4] - n->slotkey[x0]) / reduce_x;
-        auto ry5 = static_cast<double>(n->slotkey[x5] - n->slotkey[x0]) / reduce_x;
-        auto ry6 = static_cast<double>(n->slotkey[x6] - n->slotkey[x0]) / reduce_x;
-        auto ry7 = static_cast<double>(n->slotkey[x7] - n->slotkey[x0]) / reduce_x;
-        auto ry8 = static_cast<double>(n->slotkey[x8] - n->slotkey[x0]) / reduce_x;
+        ele_gap = 32;
+        ele_num = hi/ele_gap+1;
+        std::vector<double> keys(ele_num);
+        std::vector<double> sites(ele_num);
+        std::vector<double> ka(ele_num-1);
+        std::vector<double> kb(ele_num-1);
 
-        // 求k
-        double k0 = (ry1-ry0) / (x1 - x0);
-        double k1 = (ry2-ry1) / (x2 - x1);
-        double k2 = (ry3-ry2) / (x3 - x2);
-        double k3 = (ry4-ry3) / (x4 - x3);
-        double k4 = (ry5-ry4) / (x5 - x4);
-        double k5 = (ry6-ry5) / (x6 - x5);
-        double k6 = (ry7-ry6) / (x7 - x6);
-        double k7 = (ry8-ry7) / (x8 - x7);
-        double k = (ry8-ry0) / (x8 - x0);
-
-        double b0 = ry0-k0*x0;
-        double b1 = ry1-k1*x1;
-        double b2 = ry2-k2*x2;
-        double b3 = ry3-k3*x3;
-        double b4 = ry4-k4*x4;
-        double b5 = ry5-k5*x5;
-        double b6 = ry6-k6*x6;
-        double b7 = ry7-k7*x7;
-        double b = ry0-k*x0;
-
-        double up_sum=0,down_sum=0;
-        double up=0,down=0;
-        compute_integrate(k, k0, b, b0, x0, x1, up, down);
-        up_sum+=up; down_sum+=down;
-        compute_integrate(k, k1, b, b1, x1, x2, up, down);
-        up_sum+=up; down_sum+=down;
-        compute_integrate(k, k2, b, b2, x2, x3, up, down);
-        up_sum+=up; down_sum+=down;
-        compute_integrate(k, k3, b, b3, x3, x4, up, down);
-        up_sum+=up; down_sum+=down;
-        compute_integrate(k, k4, b, b4, x4, x5, up, down);
-        up_sum+=up; down_sum+=down;
-        compute_integrate(k, k5, b, b5, x5, x6, up, down);
-        up_sum+=up; down_sum+=down;
-        compute_integrate(k, k6, b, b6, x6, x7, up, down);
-        up_sum+=up; down_sum+=down;
-        compute_integrate(k, k7, b, b7, x7, x8, up, down);
-        up_sum+=up; down_sum+=down;
-
-        fitting_liner(n,"sum_" + std::to_string(static_cast<int>((up_sum+down_sum)/ry8)));
-
-        double errs = (up_sum + down_sum)/ry8;
-        if(errs < 8){
-            fitting_liner(n,"linner" + std::to_string(static_cast<int>(errs)));
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[0]++;
-#endif
+        for(int i=0;i<hi;i+=ele_gap){
+            keys.push_back(static_cast<double>(n->slotkey[i]));
+            sites.push_back(static_cast<double>(i));
         }
-        // else if(errs < 16){
-        //     fitting_gap_x2(n,"sum_" + std::to_string(static_cast<int>(errs)),static_cast<int>(errs*0.8));
-        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
-        // }
-        // else if(errs < 40){
-        //     fitting_gap_x2(n,"sum_" + std::to_string(static_cast<int>(errs)),static_cast<int>(errs*0.8));
-        //     // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
-        // }
-        else if(errs < 64){
-            fitting_gap_x2(n,"sub-liner" + std::to_string(static_cast<int>(errs)),static_cast<int>(errs*0.8));
-            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry8)));
+
+        for(int i=0;i<ele_num-1;i++){
+            ka[i] = (keys[i+1] - keys[i]) / (sites[i+1] - sites[i]);
+            kb[i] = keys[i] - ka[i] * sites[i];
+        }
+
+        k = (keys[ele_num-1] - keys[0]) / (sites[ele_num-1] - sites[0]);
+        b = keys[0] - k * sites[0];
+
+        for(int i=0;i<ele_num-1;i++){
+            double up=0,down=0;
+            compute_integrate(k, ka[i], b, kb[i], sites[i], sites[i+1], up, down);
+            up_sum+=up; down_sum+=down;
+        }
+
+
+        // array sites
+        int x4 = n->slotuse - 1;
+        int x2 = x4 >> 1;
+        int x1 = x2 >> 1;
+        int x3 = x2 + x1;
+        int x0 = 0;
+
+        auto y0 = static_cast<double>(n->slotkey[x0]);
+        auto y1 = static_cast<double>(n->slotkey[x1]);
+        auto y2 = static_cast<double>(n->slotkey[x2]);
+        auto y3 = static_cast<double>(n->slotkey[x3]);
+        auto y4 = static_cast<double>(n->slotkey[x4]);
+
+        double k0 = (y1-y0) / (x1 - x0);
+        double k1 = (y2-y1) / (x2 - x1);
+        double k2 = (y3-y2) / (x3 - x2);
+        double k3 = (y4-y3) / (x4 - x3);
+
+        fa = (x4-x0) / (y4-y0);
+        fb - y0 - fa * x0;
+
+        errs = (up_sum + down_sum) / (keys[ele_num-1] - keys[0]);
+        if(errs < 8){
+            n->model_type = modelType::LINE;
+            n->fk[0] = fa;
+            n->fb[0] = fb;
+            node_type_counts[0]++;
+        }
+        else if(errs < 16){
+            if(k > k0 && k < k3){
+                // 凸
+                n->model_type = modelType::LINE;
+                n->fk[0] = fa;
+                n->fb[0] = fb - 0.8*errs;
+
+            }else if(k < k0 && k > k3){
+                // 凹
+                n->model_type = modelType::LINE;
+                n->fk[0] = fa;
+                n->fb[0] = fb + 0.8*errs;
+            }else{
+                n->model_type = modelType::LINE;
+                n->fk[0] = fa;
+                n->fb[0] = fb;
+            }
+
         }
         else{
-            fitting_gap_x6(n,"sum_" + std::to_string(static_cast<int>(errs)));
-            // fitting_liner(n,"sum_" + std::to_string(static_cast<int>(sum/ry4)));
+
+            std::vector<std::vector<double>> dp(ele_num,std::vector<double>(ele_num,0));
+            // dp
+            for(int i=0;i<ele_num;i++){
+                for(int j=i;j<ele_num;j++){
+                    dp[i][j] = meaning_distance(ka, kb, keys, sites, i, j);
+                }
+            }
+
+            double min = DBL_MAX;
+            int sp_site[4] = {0};
+            for(int i=1;i<ele_num-2;i++){
+                for(int j=i+1;j<ele_num-1;j++){
+                    double sum = dp[0][i] + dp[i][j] + dp[j][ele_num-1];
+                    if(sum < min){
+                        sp_site[0] = 0;
+                        sp_site[1] = i;
+                        sp_site[2] = j;
+                        sp_site[3] = ele_num-1;
+                        min = sum;
+                    }
+                }
+            }
+
+            double final_k[3] = {0};
+            double final_b[3] = {0};
+            for(int i=0;i<3;i++){
+                final_k[i] = (sites[i+1] - sites[i]) / (keys[i+1] - keys[i])  ;
+                final_b[i] = sites[i] - final_k[i] * keys[i];
+            }
+
+            if(k > final_k[0] && k < final_k[2]){
+                // 凸
+                if(final_k[2]<final_k[1] && final_k[1]<final_k[0]){
+                    n->model_type = modelType::TU;
+                }else{
+                    n->model_type = modelType::SX;
+                }
+                
+            }else if(k < final_k[0] && k > final_k[2]){
+                // 凹
+                if(final_k[2]>final_k[1] && final_k[1]>final_k[0]){
+                    n->model_type = modelType::AO;
+                }else{
+                    n->model_type = modelType::SX;
+                }
+                
+            }else{
+                // small S
+                n->model_type = modelType::SX;
+            }
+            memcpy(n->fk,final_k,sizeof(final_k));
+            memcpy(n->fb,final_b,sizeof(final_b));
         }
-        
+
         n->insert_count = 0;
         n->delete_count = 0;
         return true;
@@ -2552,19 +2335,13 @@ public:
         while (!n->isleafnode())
         {
             const inner_node* inner = static_cast<const inner_node*>(n);
-            int slot = find_lower_liner(inner, key);
+            int slot = find_lower_liner_x(inner, key);
 
             n = inner->childid[slot];
             btree_level++;
         }
         leaf_node* leaf = static_cast<leaf_node*>(n);
-        // auto currentTime1 = std::chrono::high_resolution_clock::now();
-        int slot = find_lower_liner(leaf, key);
-        // __builtin_prefetch(&(r->slotuse),0,3);
-        // __builtin_prefetch(&(r->slotkey[0]),0,3);
-        // __builtin_prefetch(&(r->slotkey[8]),0,3);
-        // __builtin_prefetch(&(r->slotkey[16]),0,3);
-        // __builtin_prefetch(&(r->slotkey[24]),0,3);
+        int slot = find_lower_liner_x(leaf, key);
 
         return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
                ? &(leaf->slotdata[slot]) : nullptr;
