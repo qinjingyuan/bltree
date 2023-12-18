@@ -1844,12 +1844,12 @@ private:
 #endif
 
         pre_target = static_cast<int>(n->fa * static_cast<double>(key) + n->fb);
-        int pre_target_bak = static_cast<int>(n->fc * static_cast<double>(key) + n->fd);
-        if(n->model_type == modelType::S1 && pre_target >= (hi>>1)){
-            pre_target = pre_target_bak;
-        }else if(n->model_type == modelType::S2 && pre_target <= (hi>>1)){
-            pre_target = pre_target_bak;
-        }
+        // int pre_target_bak = static_cast<int>(n->fc * static_cast<double>(key) + n->fd);
+        // if(n->model_type == modelType::S1 && pre_target >= (hi>>1)){
+        //     pre_target = pre_target_bak;
+        // }else if(n->model_type == modelType::S2 && pre_target <= (hi>>1)){
+        //     pre_target = pre_target_bak;
+        // }
         point = pre_target = std::max(std::min(pre_target,hi-1),0);
 
         // int bound = 1;
@@ -2147,34 +2147,34 @@ node_type_counts[1]++;
             n->fa = static_cast<double>(x4-x0) / static_cast<double>(y4 - y0);
             n->fb = 0 - static_cast<double>(n->fa * y0) + err_num;
         }
-        else if(k0 > k && k3 >k && err_num > 32){
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[5]++;
-#endif
-            n->model_type = modelType::LINE;
-            n->fa = static_cast<double>(x3-x1) / static_cast<double>(y3 - y1);
-            n->fb = x1 - static_cast<double>(n->fa * y1);
-        }
-        else if(k0 < k && k3 <k && err_num > 48){
-#ifdef NODE_TYPE_COUNTS
-node_type_counts[6]++;
-#endif
-            if(k1>k2){
-                n->model_type = modelType::S2;
-                n->fa = static_cast<double>(x4-x2) / static_cast<double>(y4 - y2);
-                n->fb = x2 - static_cast<double>(n->fa * y2);
-                n->fc = static_cast<double>(x1-x0) / static_cast<double>(y1 - y0);
-                n->fd = x0 - static_cast<double>(n->fa * y0);
+//         else if(k0 > k && k3 >k && err_num > 32){
+// #ifdef NODE_TYPE_COUNTS
+// node_type_counts[5]++;
+// #endif
+//             n->model_type = modelType::LINE;
+//             n->fa = static_cast<double>(x3-x1) / static_cast<double>(y3 - y1);
+//             n->fb = x1 - static_cast<double>(n->fa * y1);
+//         }
+//         else if(k0 < k && k3 <k && err_num > 48){
+// #ifdef NODE_TYPE_COUNTS
+// node_type_counts[6]++;
+// #endif
+//             if(k1>k2){
+//                 n->model_type = modelType::S2;
+//                 n->fa = static_cast<double>(x4-x2) / static_cast<double>(y4 - y2);
+//                 n->fb = x2 - static_cast<double>(n->fa * y2);
+//                 n->fc = static_cast<double>(x1-x0) / static_cast<double>(y1 - y0);
+//                 n->fd = x0 - static_cast<double>(n->fa * y0);
 
-            }else{
-                n->model_type = modelType::S1;
-                n->fa = static_cast<double>(x2-x0) / static_cast<double>(y2 - y0);
-                n->fb = x0 - static_cast<double>(n->fa * y0);
-                n->fc = static_cast<double>(x4-x3) / static_cast<double>(y4 - y3);
-                n->fd = x3 - static_cast<double>(n->fa * y3);
+//             }else{
+//                 n->model_type = modelType::S1;
+//                 n->fa = static_cast<double>(x2-x0) / static_cast<double>(y2 - y0);
+//                 n->fb = x0 - static_cast<double>(n->fa * y0);
+//                 n->fc = static_cast<double>(x4-x3) / static_cast<double>(y4 - y3);
+//                 n->fd = x3 - static_cast<double>(n->fa * y3);
 
-            }
-        }
+//             }
+//         }
         else{
 #ifdef NODE_TYPE_COUNTS
 node_type_counts[1]++;
