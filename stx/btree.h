@@ -97,8 +97,10 @@ size_t gaps[5] = {0};
 size_t gaps_count[5] = {0};
 size_t data_distribution_count[10] = {0};
 size_t data_distribution_count_inner[10] = {0};
-size_t exec_times[5];
-size_t exec_counts[5];
+size_t mul_times[5];
+size_t mul_counts[5];
+size_t load_times[5];
+size_t load_counts[5];
 size_t node_type_counts[7] = {0};
 
 
@@ -1830,19 +1832,16 @@ private:
 
 
     template <typename node_type>
-    inline int find_lower_liner(const node_type* n, const key_type& key )
+    inline int find_lower_liner(const node_type* n, const key_type key )
     {
-#ifdef LINECOUNT_TIME
-        auto currentTime1 = std::chrono::high_resolution_clock::now();
-#endif
         if (n->slotuse == 0) return 0;
         int lo = 0, hi = n->slotuse;
         int pre_target,point;
 
-#ifdef L0_TIME
+
+#ifdef MUL_TIME
         auto currentTime1 = std::chrono::high_resolution_clock::now();
 #endif
-
         pre_target = static_cast<int>(n->fa * static_cast<double>(key) + n->fb);
         // int pre_target_bak = static_cast<int>(n->fc * static_cast<double>(key) + n->fd);
         // if(n->model_type == modelType::S1 && pre_target >= (hi>>1)){
@@ -1868,6 +1867,17 @@ private:
         //     point = binary_search(n, std::max(point-bound,0),point-(bound/2),key);
         //     // point++;
         // }
+#ifdef MUL_TIME
+        auto currentTime2 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        mul_times[btree_level] +=  (nanoseconds2 - nanoseconds1-21);
+        mul_counts[btree_level]++;
+#endif
+
+#ifdef LOAD_TIME
+        auto currentTime3 = std::chrono::high_resolution_clock::now();
+#endif
         if(n->slotkey[point] < key){
 
             while (point < hi && key_less(n->slotkey[point], key)) {
@@ -1881,21 +1891,14 @@ private:
             }
             point++;
         }
-#ifdef L0_TIME
-        auto currentTime2 = std::chrono::high_resolution_clock::now();
-        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        exec_times[btree_level] +=  (nanoseconds2 - nanoseconds1);
-        exec_counts[btree_level]++;
+#ifdef LOAD_TIME
+        auto currentTime4 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds3 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime3.time_since_epoch()).count();
+        auto nanoseconds4 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime4.time_since_epoch()).count();
+        load_times[btree_level] +=  (nanoseconds4 - nanoseconds3-21);
+        load_counts[btree_level]++;
 #endif
 
-#ifdef LINECOUNT_TIME
-        auto currentTime2 = std::chrono::high_resolution_clock::now();
-        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        exec_times[0] +=  (nanoseconds2 - nanoseconds1);
-        exec_counts[0]++;
-#endif
 
 
 #ifdef COUNT_GAP

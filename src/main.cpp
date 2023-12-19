@@ -130,6 +130,13 @@ auto test_btree(std::vector<std::pair<size_t,size_t>> data,int count,int times) 
     
 }
 
+auto print_sts(size_t sum[5],size_t count[5]){
+    for(int i=0;i<5;i++){
+        std::cout << sum[i] / (count[i]+1) << " " ;
+    }
+    std::cout << "|";
+}
+
 auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times) -> bool{
     btree_type bt;
     bt.bulk_load_x(data.begin(),data.end());
@@ -148,12 +155,14 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
     size_t states[2] = {0};
     for(int i=0;i<times;i++){
         for(int j=0;j<5;j++){
-            stx::gaps[j] = 0;
-            stx::gaps_count[j] = 0;
-            stx::level_delay[j] = 0;
+            stx::gaps[j] = 1;
+            stx::gaps_count[j] = 1;
+            stx::level_delay[j] = 1;
             stx::level_delay_count[j] = 1;
-            stx::exec_times[j] = 1;
-            stx::exec_counts[j] = 1;
+            stx::mul_times[j] = 1;
+            stx::mul_counts[j] = 1;
+            stx::load_times[j] = 1;
+            stx::load_counts[j] = 1;
         }
 
         unsigned long using_times1 = 0;
@@ -206,21 +215,12 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
         << __func__ 
         << " insert用时-纳秒:" << using_times1 / count 
         << " find用时-纳秒:" << static_cast<double>(using_times2) / count 
-        << " 数据量-百万:" << bt.size()/1000000 
-        << " level0:" << stx::level_delay[0] / stx::level_delay_count[0]  
-        << " level1:" << stx::level_delay[1] / stx::level_delay_count[1]  
-        << " level2:" << stx::level_delay[2] / stx::level_delay_count[2]  
-        << " level3:" << stx::level_delay[3] / stx::level_delay_count[3]  
-        << " level4:" << stx::level_delay[4] / stx::level_delay_count[4]  
-        << " gap0:" << static_cast<double>(stx::gaps[0]) / (stx::gaps_count[0]+1   )
-        << " gap1:" << static_cast<double>(stx::gaps[1]) / (stx::gaps_count[1]+1   )
-        << " gap2:" << static_cast<double>(stx::gaps[2]) / (stx::gaps_count[2]+1   )
-        << " gap3:" << static_cast<double>(stx::gaps[3]) / (stx::gaps_count[3]+1   )
-        << " gap4:" << static_cast<double>(stx::gaps[4]) / (stx::gaps_count[4]+1   )
-        << " avg_exec_times:" << stx::exec_times[0] / stx::exec_counts[0] 
-        << " avg_exec_times:" << stx::exec_times[1] / stx::exec_counts[1] 
-        << " avg_exec_times:" << stx::exec_times[2] / stx::exec_counts[2] 
-        <<  "\n";
+        << " 数据量-百万:" << bt.size()/1000000;
+        print_sts(stx::gaps, stx::gaps_count);
+        print_sts(stx::mul_times, stx::mul_counts);
+        print_sts(stx::load_times, stx::load_counts);
+
+        std::cout <<  "\n";
         states[0] += using_times2;
     }
     std::cout << __func__ << "平均用时" << states[0] / (times*count) << "\n";
