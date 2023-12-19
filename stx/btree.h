@@ -61,7 +61,7 @@
 #ifdef BTREE_DEBUG
 
 #include <iostream>
-
+#include <barrier>
 /// Print out debug information to std::cout if BTREE_DEBUG is defined.
 #define BTREE_PRINT(x)          do { if (debug) (std::cout << x << std::endl); } while (0)
 
@@ -97,8 +97,10 @@ size_t gaps[5] = {0};
 size_t gaps_count[5] = {0};
 size_t data_distribution_count[10] = {0};
 size_t data_distribution_count_inner[10] = {0};
-size_t exec_times[5];
-size_t exec_counts[5];
+size_t mul_times[5];
+size_t mul_counts[5];
+size_t load_times[5];
+size_t load_counts[5];
 size_t node_type_counts[7] = {0};
 
 
@@ -1841,33 +1843,29 @@ private:
     }
 
     template <typename node_type>
-    inline int find_lower_liner_x(const node_type* n, const key_type& key )
+    inline int find_lower_liner_x(const node_type* n, const key_type key )
     {
 
         if(n->model_type == modelType::GENERAL){
             return find_lower(n, key);
         }
 
-#ifdef LINECOUNT_TIME
-        auto currentTime1 = std::chrono::high_resolution_clock::now();
-#endif
         if (n->slotuse == 0) return 0;
         int lo = 0, hi = n->slotuse;
         int pre_target,point;
         int pt0,pt1,pt2;
 
-#ifdef L0_TIME
+#ifdef MUL_TIME
         auto currentTime1 = std::chrono::high_resolution_clock::now();
 #endif
-
-        pt0 = static_cast<int>(n->fk[0] * (key) + n->fb[0]);
-        pt1 = static_cast<int>(n->fk[1] * (key) + n->fb[1]);
-        pt2 = static_cast<int>(n->fk[2] * (key) + n->fb[2]);
 
         // std::cout << n->fk[0] << " " << n->fk[1] << " " << n->fk[2] << " \n";
         // std::cout << n->fb[0] << " " << n->fb[1] << " " << n->fb[2] << " \n";
         // std::cout << pt0 << " " << pt1 << " " << pt2 << " \n";
 
+        pt0 = static_cast<int>(n->fk[0] * (key) + n->fb[0]);
+        pt1 = static_cast<int>(n->fk[1] * (key) + n->fb[1]);
+        pt2 = static_cast<int>(n->fk[2] * (key) + n->fb[2]);
         switch (n->model_type)
         {
         case modelType::LINE:
@@ -1893,6 +1891,18 @@ private:
 
         point = pre_target = std::min(std::max(pre_target,lo),hi-1);
 
+#ifdef MUL_TIME
+        auto currentTime2 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        mul_times[btree_level] +=  (nanoseconds2 - nanoseconds1-21);
+        mul_counts[btree_level]++;
+#endif
+
+#ifdef LOAD_TIME
+        auto currentTime3 = std::chrono::high_resolution_clock::now();
+#endif
+
         if(n->slotkey[point] < key){
 
             while (point < hi && key_less(n->slotkey[point], key)) {
@@ -1905,20 +1915,13 @@ private:
             point++;
         }
         // std::cout << pre_target << " "<<point<< "\n";
-#ifdef L0_TIME
-        auto currentTime2 = std::chrono::high_resolution_clock::now();
-        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        exec_times[btree_level] +=  (nanoseconds2 - nanoseconds1);
-        exec_counts[btree_level]++;
-#endif
 
-#ifdef LINECOUNT_TIME
-        auto currentTime2 = std::chrono::high_resolution_clock::now();
-        auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        exec_times[0] +=  (nanoseconds2 - nanoseconds1);
-        exec_counts[0]++;
+#ifdef LOAD_TIME
+        auto currentTime4 = std::chrono::high_resolution_clock::now();
+        auto nanoseconds3 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime3.time_since_epoch()).count();
+        auto nanoseconds4 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime4.time_since_epoch()).count();
+        load_times[btree_level] +=  (nanoseconds4 - nanoseconds3-21);
+        load_counts[btree_level]++;
 #endif
 
 
@@ -2073,7 +2076,6 @@ private:
     bool node_training(T* n){
         // sure s1 != 0, define 5 site for compute k.
 
-
         int hi,lo,ele_gap,ele_num;
         double up_sum=0,down_sum=0,k=0,b=0,errs=0,fa=0,fb=0;
         hi = n->slotuse-1;
@@ -2147,31 +2149,24 @@ private:
             n->fb[0] = fb;
             node_type_counts[0]++;
         }
-        // else if(errs < 16){
-        //     if(k > k0 && k < k3){
-        //         // 凸
-        //         n->model_type = modelType::LINE;
-        //         n->fk[0] = fa;
-        //         n->fb[0] = fb - 0.8*errs;
+        else if(errs < 16){
+            if(k > k0 && k < k3){
+                // 凸
+                n->model_type = modelType::LINE;
+                n->fk[0] = fa;
+                n->fb[0] = fb - 0.8*errs;
 
-        //     }else if(k < k0 && k > k3){
-        //         // 凹
-        //         n->model_type = modelType::LINE;
-        //         n->fk[0] = fa;
-        //         n->fb[0] = fb + 0.8*errs;
-        //     }else{
-        //         n->model_type = modelType::LINE;
-        //         n->fk[0] = fa;
-        //         n->fb[0] = fb;
-        //     }
-        // }
-
-        // else{
-        //     n->model_type = modelType::LINE;
-        //     n->fk[0] = fa;
-        //     n->fb[0] = fb;
-
-        // }
+            }else if(k < k0 && k > k3){
+                // 凹
+                n->model_type = modelType::LINE;
+                n->fk[0] = fa;
+                n->fb[0] = fb + 0.8*errs;
+            }else{
+                n->model_type = modelType::LINE;
+                n->fk[0] = fa;
+                n->fb[0] = fb;
+            }
+        }
 
         else{
             std::vector<std::vector<double>> dp(ele_num,std::vector<double>(ele_num,0));
