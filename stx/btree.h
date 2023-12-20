@@ -2149,7 +2149,7 @@ private:
             n->fb[0] = fb;
             node_type_counts[0]++;
         }
-        else if(errs < 16){
+        else if(errs < 24){
             if(k > k0 && k < k3){
                 // 凸
                 n->model_type = modelType::LINE;
@@ -2246,7 +2246,6 @@ private:
         n->delete_count = 0;
         return true;
     }
-
 
 
     /// Searches for the first key in the node n greater than key. Uses binary
