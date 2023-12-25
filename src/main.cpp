@@ -42,8 +42,8 @@ struct traits_nodebug : stx::btree_default_set_traits<KeyType> {
     static const bool selfverify = false;
     static const bool debug = false;
 
-    static const int  leafslots = 256;
-    static const int  innerslots = 256;
+    static const int  leafslots = 1024;
+    static const int  innerslots = 1024;
 };
 
 typedef stx::btree_multimap<size_t, size_t, std::less<size_t>, traits_nodebug<size_t> > btree_type;
@@ -413,8 +413,8 @@ int main(int argc, char** argv){
     //     std::cout << keys[i+1] - keys[i] << " " << keys[i] << std::endl;
     //   }
     // test_map_instance(2000000,2000000,10);
-    test_alex(data, 2000000, 10);
     test_btree_x(data, 2000000, 10);
+    test_alex(data, 2000000, 10);
     // test_btree(data, 2000000, 10);
     // test_btree_l(data, 2000000, 10);
 

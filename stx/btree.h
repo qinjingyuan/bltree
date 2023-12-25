@@ -2173,7 +2173,7 @@ private:
         // std::cout << fa << " " << fb << "\n";
         errs = (up_sum + down_sum) / (keys[r] - keys[0]);
 
-        if(errs < 8){
+        if(errs < 32){
             /* liner type */
             n->model_type = modelType::LINE;
             n->fk[0] = fa;
@@ -2181,7 +2181,7 @@ private:
             // node_type_counts[0]++;
         }
 
-        else if(errs < 24){
+        else if(errs < 96){
             if(k > k0 && k < k3){
                 // 小凸 small convex
                 n->model_type = modelType::LINE;
