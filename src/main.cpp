@@ -215,7 +215,7 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
         << __func__ 
         << " insert用时-纳秒:" << using_times1 / count 
         << " find用时-纳秒:" << static_cast<double>(using_times2) / count 
-        << " 数据量-百万:" << bt.size()/1000000;
+        << " 数据量-百万:" << bt.size()/1000000 << " |";
         print_sts(stx::gaps, stx::gaps_count);
         print_sts(stx::mul_times, stx::mul_counts);
         print_sts(stx::load_times, stx::load_counts);
