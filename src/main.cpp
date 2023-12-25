@@ -140,6 +140,7 @@ auto print_sts(size_t sum[5], size_t count[5]){
     std::cout << "|";
 }
 
+
 auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times) -> bool{
     btree_type bt;
     bt.bulk_load_x(data.begin(),data.end());
@@ -218,7 +219,7 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
         << __func__ 
         << " insert用时-纳秒:" << using_times1 / count 
         << " find用时-纳秒:" << static_cast<double>(using_times2) / count 
-        << " 数据量-百万:" << bt.size()/1000000 ;
+        << " 数据量-百万:" << bt.size()/1000000 << " |" ;
         print_sts(stx::gaps, stx::gaps_count);
         print_sts(stx::mul_times, stx::mul_counts);
         print_sts(stx::load_times, stx::load_counts);
@@ -412,8 +413,8 @@ int main(int argc, char** argv){
     //     std::cout << keys[i+1] - keys[i] << " " << keys[i] << std::endl;
     //   }
     // test_map_instance(2000000,2000000,10);
-    test_btree_x(data, 2000000, 10);
     test_alex(data, 2000000, 10);
+    test_btree_x(data, 2000000, 10);
     // test_btree(data, 2000000, 10);
     // test_btree_l(data, 2000000, 10);
 
