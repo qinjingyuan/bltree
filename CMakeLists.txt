@@ -38,9 +38,9 @@ add_definitions( -flto -fno-stack-protector -Wno-unknown-pragmas  -rdynamic -O2 
 # add_definitions(-DLEVEL_COUNT_TIME)
 # add_definitions(-DNODE_TYPE_COUNTS)
 
-add_definitions(-DMUL_TIME)
-add_definitions(-DLOAD_TIME)
-add_definitions(-DCOUNT_GAP)
+# add_definitions(-DMUL_TIME)
+# add_definitions(-DLOAD_TIME)
+# add_definitions(-DCOUNT_GAP)
 
 
 

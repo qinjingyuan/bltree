@@ -140,6 +140,7 @@ auto print_sts(size_t sum[5], size_t count[5]){
     std::cout << "|";
 }
 
+static size_t tmp_num = 0;
 
 auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times) -> bool{
     btree_type bt;
@@ -199,10 +200,18 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
             //     << data[randomInt].first  <<"\t"
             //     << data[randomInt].second <<"\n" ;
             // }
+
+            // std::cout << *res << "\n";
+            // tmp_num += (size_t)res;
+            // if(t < 0){}
+
+
             if(res){
                 // std::cout << data[randomInt].first << std::endl;
                 if(data[randomInt].first != *res) std::cout << data[randomInt].first <<" "<< *res << std::endl;
             }
+
+
             // if(res == bt.end() || data[randomInt].first != res->second){
             //     std::cout 
             //     << data[randomInt].first  <<"\t"
