@@ -504,6 +504,70 @@ private:
         }
     };
 
+
+    struct slotsite{
+        node* n;
+        unsigned short site;
+        slotsite(node* n, unsigned short v) : node(n), site(v){}
+
+        unsigned short getsite(){
+            return site;
+        }
+
+        slotsite& operator ++ (){
+            unsigned short use = n->slotuse;
+            while(site < use - 1 && !(n->bs[++site])){ }
+            return *this;
+        }
+
+        slotsite& operator -- (){
+            unsigned short use = n->slotuse;
+            while(site > 0 && !(n->bs[--site])){ }
+            return *this;
+        }
+
+        bool operator == (const slotsite& x){
+            return (site == x.site && n ==  x.n);
+        }
+
+        unsigned short nextgap(){
+            unsigned short use = n->slotuse;
+            unsigned short s = site;
+            while(s < use && n->bs[++s]){ }
+            return s;
+        }
+
+        unsigned short prevgap(){
+            // unsigned short use = n->slotuse;
+            unsigned short s = site;
+            while(s > 0 && n->bs[--s]){ }
+            return s;
+        }
+
+        unsigned short nextgapfrag(){
+            unsigned short max = (site | 7) + 1;
+            unsigned short s = site;
+            while(s < max && n->bs[++s]){ }
+            return s;
+        }
+
+        unsigned short prevgapfrag(){
+            unsigned short min = (site | 7) - 7;
+            unsigned short s = site;
+            while(s > min && n->bs[--s]){ }
+            return s;
+        }
+
+        bool isfisrt(){
+            return (site & 7) + 1 == 8; 
+        }
+
+        static unsigned short lastfrag(unsigned short x){
+            return (x | 7) + 1;
+        }
+
+    };
+
 private:
     // *** Template Magic to Convert a pair or key/data types to a value_type
 
@@ -4124,9 +4188,9 @@ private:
             }
 
             // check gap nums
-            // if(leaf->slotuse - leaf->slotusevalid > static_cast<unsigned short>(0.4 * leaf->slotuse)){
-            //     regap(leaf);
-            // }
+            if(leaf->slotuse - leaf->slotusevalid > static_cast<unsigned short>(0.4 * leaf->slotuse)){
+                regap(leaf);
+            }
 
             if (leaf->isunderflow() && !(leaf == m_root && leaf->slotuse >= 1))
             {
@@ -4157,41 +4221,41 @@ private:
                 else if ((leftleaf == NULL || leftleaf->isfew()) && (rightleaf == NULL || rightleaf->isfew()))
                 {
                     if (leftparent == parent)
-                        myres |= merge_leaves(leftleaf, leaf, leftparent);
+                        myres |= merge_leaves_x(leftleaf, leaf, leftparent);
                     else
-                        myres |= merge_leaves(leaf, rightleaf, rightparent);
+                        myres |= merge_leaves_x(leaf, rightleaf, rightparent);
                 }
                 // case : the right leaf has extra data, so balance right with current
                 else if ((leftleaf != NULL && leftleaf->isfew()) && (rightleaf != NULL && !rightleaf->isfew()))
                 {
                     if (rightparent == parent)
-                        myres |= shift_left_leaf(leaf, rightleaf, rightparent, parentslot);
+                        myres |= shift_left_leaf_x(leaf, rightleaf, rightparent, parentslot);
                     else
-                        myres |= merge_leaves(leftleaf, leaf, leftparent);
+                        myres |= merge_leaves_x(leftleaf, leaf, leftparent);
                 }
                 // case : the left leaf has extra data, so balance left with current
                 else if ((leftleaf != NULL && !leftleaf->isfew()) && (rightleaf != NULL && rightleaf->isfew()))
                 {
                     if (leftparent == parent)
-                        shift_right_leaf(leftleaf, leaf, leftparent, parentslot - 1);
+                        shift_right_leaf_x(leftleaf, leaf, leftparent, parentslot - 1);
                     else
-                        myres |= merge_leaves(leaf, rightleaf, rightparent);
+                        myres |= merge_leaves_x(leaf, rightleaf, rightparent);
                 }
                 // case : both the leaf and right leaves have extra data and our
                 // parent, choose the leaf with more data
                 else if (leftparent == rightparent)
                 {
                     if (leftleaf->slotuse <= rightleaf->slotuse)
-                        myres |= shift_left_leaf(leaf, rightleaf, rightparent, parentslot);
+                        myres |= shift_left_leaf_x(leaf, rightleaf, rightparent, parentslot);
                     else
-                        shift_right_leaf(leftleaf, leaf, leftparent, parentslot - 1);
+                        shift_right_leaf_x(leftleaf, leaf, leftparent, parentslot - 1);
                 }
                 else
                 {
                     if (leftparent == parent)
-                        shift_right_leaf(leftleaf, leaf, leftparent, parentslot - 1);
+                        shift_right_leaf_x(leftleaf, leaf, leftparent, parentslot - 1);
                     else
-                        myres |= shift_left_leaf(leaf, rightleaf, rightparent, parentslot);
+                        myres |= shift_left_leaf_x(leaf, rightleaf, rightparent, parentslot);
                 }
             }
 
@@ -4207,13 +4271,17 @@ private:
             inner_node* myleftparent, * myrightparent;
 
             int slot = find_lower_x(inner, key);
+            
 
             if (slot == 0) {
                 myleft = (left == NULL) ? NULL : (static_cast<inner_node*>(left))->childid[left->slotuse - 1];
                 myleftparent = leftparent;
             }
             else {
-                myleft = inner->childid[slot - 1];
+                // while(!inner->bs[--slot]){ }
+                slotsite tmpslot(inner, slot);
+                tmpslot--;
+                myleft = inner->childid[tmpslot.getsite()];
                 myleftparent = inner;
             }
 
@@ -4222,7 +4290,10 @@ private:
                 myrightparent = rightparent;
             }
             else {
-                myright = inner->childid[slot + 1];
+                // while(!inner->bs[++slot]){ }
+                slotsite tmpslot(inner, slot);
+                tmpslot++;
+                myright = inner->childid[tmpslot.getsite()];
                 myrightparent = inner;
             }
 
@@ -4236,11 +4307,14 @@ private:
 
             result_t myres = result_t(btree_ok);
 
+            // ??? 
             if (result.has(btree_not_found))
             {
                 return result_t(result);
             }
 
+            // 如果下层节点删除的是最后一个key，传到上层节点；
+            // 如果删除的是父节点的最后一个元素，需要继续上传；否则直接更改
             if (result.has(btree_update_lastkey))
             {
                 if (parent && parentslot < parent->slotuse)
@@ -4260,25 +4334,59 @@ private:
             if (result.has(btree_fixmerge))
             {
                 // either the current node or the next is empty and should be removed
-                if (inner->childid[slot]->slotuse != 0)
-                    slot++;
+                // 因为进行了合并，要让slot指向合并后为空的索引节点
+                slotsite tmpslot(inner, slot);
+                if (inner->childid[slot]->slotuse != 0){
+                    tmpslot++;
+                    slot = tmpslot.getsite();
+                }
 
                 // this is the child slot invalidated by the merge
                 BTREE_ASSERT(inner->childid[slot]->slotuse == 0);
 
                 free_node(inner->childid[slot]);
 
-                std::copy(inner->slotkey + slot, inner->slotkey + inner->slotuse,
-                          inner->slotkey + slot - 1);
-                std::copy(inner->childid + slot + 1, inner->childid + inner->slotuse + 1,
-                          inner->childid + slot);
+                // 保持gap数组
+                tmpslot--;
+                inner->slotkey[tmpslot.getsite()] = inner->slotkey[slot];
+                inner->bs.reset(slot);
+                tmpslot++;
+                slot = tmpslot.getsite();
+                unsigned short end = tmpslot.nextgapfrag();
 
-                inner->slotuse--;
+                // 这里为什么childid比slotkey大1，因为合并时是右节点向左合并
+                // 如果左节点向右合并，他们就是一样大，但需要移动两次
+                // 使用gap数组时，它们相差1不利于进行gap数据控制
+                if(!tmpslot.isfisrt()){
+                    if(tmpslot.nextgapfrag() == inner->slotuse){
+                        // 如果是最后一个片段，移动时childid要加一
+
+                        std::copy(inner->slotkey + slot, inner->slotkey + inner->slotuse,
+                                inner->slotkey + slot - 1);
+                        std::copy(inner->childid + slot, inner->childid + inner->slotuse + 1,
+                                inner->childid + slot - 1);
+                        bit_copy(inner->bs + slot, inner->bs + end,
+                                inner->bs + slot - 1);
+                        inner->slotusevalid--;
+
+                    }else{
+                        std::copy(inner->slotkey + slot, inner->slotkey + end,
+                                inner->slotkey + slot - 1);
+                        std::copy(inner->childid + slot , inner->childid + end,
+                                inner->childid + slot - 1);
+                        bit_copy(inner->bs + slot, inner->bs + end,
+                                inner->bs + slot - 1);
+                    }
+                }
+
+                // 无论哪种情况，有效数量都要-1
+                inner->slotusevalid--;
 
                 if (inner->level == 1)
                 {
                     // fix split key for children leaves
-                    slot--;
+                    tmpslot--;
+                    slot == tmpslot.getsite();
                     leaf_node* child = static_cast<leaf_node*>(inner->childid[slot]);
                     inner->slotkey[slot] = child->slotkey[child->slotuse - 1];
                 }
@@ -4305,9 +4413,9 @@ private:
                 else if ((leftinner == NULL || leftinner->isfew()) && (rightinner == NULL || rightinner->isfew()))
                 {
                     if (leftparent == parent)
-                        myres |= merge_inner(leftinner, inner, leftparent, parentslot - 1);
+                        myres |= merge_inner_x(leftinner, inner, leftparent, (slotsite(parent,parentslot)--).getsite());
                     else
-                        myres |= merge_inner(inner, rightinner, rightparent, parentslot);
+                        myres |= merge_inner_x(inner, rightinner, rightparent, parentslot);
                 }
                 // case : the right leaf has extra data, so balance right with current
                 else if ((leftinner != NULL && leftinner->isfew()) && (rightinner != NULL && !rightinner->isfew()))
@@ -4315,7 +4423,7 @@ private:
                     if (rightparent == parent)
                         shift_left_inner(inner, rightinner, rightparent, parentslot);
                     else
-                        myres |= merge_inner(leftinner, inner, leftparent, parentslot - 1);
+                        myres |= merge_inner_x(leftinner, inner, leftparent, parentslot - 1);
                 }
                 // case : the left leaf has extra data, so balance left with current
                 else if ((leftinner != NULL && !leftinner->isfew()) && (rightinner != NULL && rightinner->isfew()))
@@ -4323,7 +4431,7 @@ private:
                     if (leftparent == parent)
                         shift_right_inner(leftinner, inner, leftparent, parentslot - 1);
                     else
-                        myres |= merge_inner(inner, rightinner, rightparent, parentslot);
+                        myres |= merge_inner_x(inner, rightinner, rightparent, parentslot);
                 }
                 // case : both the leaf and right leaves have extra data and our
                 // parent, choose the leaf with more data
@@ -4690,6 +4798,40 @@ private:
         return result_t(btree_fixmerge);
     }
 
+    result_t merge_leaves_x(leaf_node* left, leaf_node* right, inner_node* parent)
+    {
+        BTREE_PRINT("Merge leaf nodes " << left << " and " << right << " with common parent " << parent << ".");
+        (void)parent;
+
+        BTREE_ASSERT(left->isleafnode() && right->isleafnode());
+        BTREE_ASSERT(parent->level == 1);
+
+        unsigned short left_slotuse = left->slotuse | (unsigned short)7
+        unsigned short right_slotuse = right->slotuse | (unsigned short)7
+
+        BTREE_ASSERT(left_slotuse + right_slotuse < leafslotmax);
+
+        std::copy(right->slotkey, right->slotkey + right_slotuse,
+                  left->slotkey + left_slotuse);
+        data_copy(right->slotdata, right->slotdata + right_slotuse,
+                  left->slotdata + left_slotuse);
+        bit_copy(right->bs, right->bs + right_slotuse,
+                  left->bs + left_slotuse);
+
+        left->slotuse += right_slotuse;
+        left->slotusevalid += right->slotusevalid;
+
+        left->nextleaf = right->nextleaf;
+        if (left->nextleaf)
+            left->nextleaf->prevleaf = left;
+        else
+            m_tailleaf = left;
+
+        right->slotuse = 0;
+
+        return result_t(btree_fixmerge);
+    }
+
     /// Merge two inner nodes. The function moves all key/childid pairs from
     /// right to left and sets right's slotuse to zero. The right slot is then
     /// removed by the calling parent node.
@@ -4730,6 +4872,57 @@ private:
 
         left->slotuse += right->slotuse;
         right->slotuse = 0;
+
+        return result_t(btree_fixmerge);
+    }
+
+    /// Merge two inner nodes. The function moves all key/childid pairs from
+    /// right to left and sets right's slotuse to zero. The right slot is then
+    /// removed by the calling parent node.
+    static result_t merge_inner_x(inner_node* left, inner_node* right, inner_node* parent, unsigned int parentslot)
+    {
+        BTREE_PRINT("Merge inner nodes " << left << " and " << right << " with common parent " << parent << ".");
+
+        BTREE_ASSERT(left->level == right->level);
+        BTREE_ASSERT(parent->level == left->level + 1);
+        // parent slot is left site in parent
+        BTREE_ASSERT(parent->childid[parentslot] == left);
+
+        BTREE_ASSERT(left->slotuse + right->slotuse < innerslotmax);
+
+        if (selfverify)
+        {
+            // find the left node's slot in the parent's children
+            unsigned int leftslot = 0;
+            while (leftslot <= parent->slotuse && parent->childid[leftslot] != left)
+                ++leftslot;
+
+            BTREE_ASSERT(leftslot < parent->slotuse);
+            BTREE_ASSERT(parent->childid[leftslot] == left);
+            BTREE_ASSERT(parent->childid[leftslot + 1] == right);
+
+            BTREE_ASSERT(parentslot == leftslot);
+        }
+
+        // retrieve the decision key from parent
+        left->slotkey[left->slotuse] = parent->slotkey[parentslot];
+        left->slotusevalid++;
+        left->slotuse++;
+
+        unsigned short write_end = slotsite::lastfrag(left->slotuse);
+
+        // copy over keys and children from right
+        std::copy(right->slotkey, right->slotkey + right->slotuse,
+                  left->slotkey + write_end);
+        std::copy(right->childid, right->childid + right->slotuse + 1,
+                  left->childid + write_end);
+        bit_copy(right->bs, right->bs + right->slotuse,
+                  left->bs + write_end);
+
+        left->slotuse += right->slotuse;
+        left->slotusevalid += right->slotusevalid;
+        right->slotuse = 0;
+        right->slotusevalid = 0;
 
         return result_t(btree_fixmerge);
     }
@@ -4781,6 +4974,77 @@ private:
             return result_t(btree_update_lastkey, left->slotkey[left->slotuse - 1]);
         }
     }
+
+
+    static result_t shift_left_leaf_x(leaf_node* left, leaf_node* right, inner_node* parent, unsigned int parentslot)
+    {
+        BTREE_ASSERT(left->isleafnode() && right->isleafnode());
+        BTREE_ASSERT(parent->level == 1);
+
+        BTREE_ASSERT(left->nextleaf == right);
+        BTREE_ASSERT(left == right->prevleaf);
+
+        BTREE_ASSERT(left->slotuse < right->slotuse);
+        BTREE_ASSERT(parent->childid[parentslot] == left);
+
+        unsigned short left_slotuse = (left->slotuse | (unsigned short)7) + 1;
+        unsigned short right_slotuse = (right->slotuse | (unsigned short)7) + 1;
+
+        unsigned int shiftnum = (((right_slotuse - left_slotuse) >> 1) | (unsigned short)7)+1;
+
+        BTREE_PRINT("Shifting (leaf) " << shiftnum << " entries to left " << left << " from right " << right << " with common parent " << parent << ".");
+
+        BTREE_ASSERT(left_slotuse + shiftnum < leafslotmax);
+
+        // copy the first items from the right node to the last slot in the left node.
+
+        std::copy(right->slotkey, right->slotkey + shiftnum,
+                  left->slotkey + left_slotuse);
+        data_copy(right->slotdata, right->slotdata + shiftnum,
+                  left->slotdata + left_slotuse);
+        bit_copy(right->slotdata, right->slotdata + shiftnum,
+                  left->slotdata + left_slotuse);
+
+        unsigned short last_gap_num = 0;
+        while(!left->bs[left_slotuse + shiftnum - last_gap_num - 1]){
+            last_gap_num++;
+        }
+
+        left->slotuse += (shiftnum - last_gap_num);
+
+        // compute valid ele nums
+        unsigned short valid_nums = 0;
+        for(unsigned int i = 0; i < shiftnum; i++){
+            if(right->bs[i]){
+                valid_nums++;
+            }
+        }
+
+        left->slotusevalid += valid_nums;
+
+        // shift all slots in the right node to the left
+
+        std::copy(right->slotkey + shiftnum, right->slotkey + right->slotuse,
+                  right->slotkey);
+        data_copy(right->slotdata + shiftnum, right->slotdata + right->slotuse,
+                  right->slotdata);
+        bit_copy(right->bs + shiftnum, right->bs + right->bs,
+                  right->bs);
+
+        right->slotuse -= shiftnum;
+        right->slotusevalid -= valid_nums;
+
+        // fixup parent
+        if (parentslot < parent->slotuse) {
+            parent->slotkey[parentslot] = left->slotkey[left->slotuse - 1];
+            return result_t(btree_ok);
+        }
+        else {  // the update is further up the tree
+            return result_t(btree_update_lastkey, left->slotkey[left->slotuse - 1]);
+        }
+    }
+
+
 
     /// Balance two inner nodes. The function moves key/data pairs from right
     /// to left so that both nodes are equally filled. The parent node is
@@ -4890,6 +5154,80 @@ private:
                   right->slotdata);
 
         left->slotuse -= shiftnum;
+
+        parent->slotkey[parentslot] = left->slotkey[left->slotuse - 1];
+    }
+
+
+    static void shift_right_leaf_x(leaf_node* left, leaf_node* right, inner_node* parent, unsigned int parentslot)
+    {
+        BTREE_ASSERT(left->isleafnode() && right->isleafnode());
+        BTREE_ASSERT(parent->level == 1);
+
+        BTREE_ASSERT(left->nextleaf == right);
+        BTREE_ASSERT(left == right->prevleaf);
+        BTREE_ASSERT(parent->childid[parentslot] == left);
+
+        BTREE_ASSERT(left->slotuse > right->slotuse);
+
+        unsigned short left_slotuse = (left->slotuse | (unsigned short)7) + 1;
+        unsigned short right_slotuse = (right->slotuse | (unsigned short)7) + 1;
+
+        unsigned int shiftnum = (((right_slotuse - left_slotuse) >> 1) | (unsigned short)7)+1;
+
+        BTREE_PRINT("Shifting (leaf) " << shiftnum << " entries to right " << right << " from left " << left << " with common parent " << parent << ".");
+
+        if (selfverify)
+        {
+            // find the left node's slot in the parent's children
+            unsigned int leftslot = 0;
+            while (leftslot <= parent->slotuse && parent->childid[leftslot] != left)
+                ++leftslot;
+
+            BTREE_ASSERT(leftslot < parent->slotuse);
+            BTREE_ASSERT(parent->childid[leftslot] == left);
+            BTREE_ASSERT(parent->childid[leftslot + 1] == right);
+
+            BTREE_ASSERT(leftslot == parentslot);
+        }
+
+        // shift all slots in the right node
+
+        BTREE_ASSERT(right_slotuse + shiftnum < leafslotmax);
+
+        std::copy_backward(right->slotkey, right->slotkey + right_slotuse,
+                           right->slotkey + right_slotuse + shiftnum);
+        data_copy_backward(right->slotdata, right->slotdata + right_slotuse,
+                           right->slotdata + right_slotuse + shiftnum);
+        bit_copy_backward(right->bs, right->bs + right_slotuse,
+                           right->bs + right_slotuse + shiftnum);
+
+        right->slotuse += shiftnum;
+        // compute valid ele nums
+        unsigned short valid_nums = 0;
+        for(unsigned int i = 0; i < shiftnum; i++){
+            if(left->bs[i]){
+                valid_nums++;
+            }
+        }
+        right->slotusevalid += valid_nums;
+
+        // copy the last items from the left node to the first slot in the right node.
+        std::copy(left->slotkey + left_slotuse - shiftnum, left->slotkey + left_slotuse,
+                  right->slotkey);
+        data_copy(left->slotdata + left__slotuse - shiftnum, left->slotdata + left_slotuse,
+                  right->slotdata);
+        bit_copy(left->bs + left_slotuse - shiftnum, left->bs + left_slotuse,
+                  right->bs);
+
+
+        unsigned short last_gap_num = 0;
+        while(!left->bs[left_slotuse - shiftnum - last_gap_num - 1]){
+            last_gap_num++;
+        }
+
+        left->slotuse -= (shiftnum + last_gap_num);
+        left->slotusevalid -= valid_nums;
 
         parent->slotkey[parentslot] = left->slotkey[left->slotuse - 1];
     }
