@@ -566,6 +566,17 @@ private:
             return (x | 7) + 1;
         }
 
+        static uint16_t countvalid(node* n, unsigned short s1, unsigned short s2){
+            int count = 0;
+            for(int i = s1; i < s2; i++){
+                if(n->bs[s1]){
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
     };
 
 private:
@@ -4421,7 +4432,7 @@ private:
                 else if ((leftinner != NULL && leftinner->isfew()) && (rightinner != NULL && !rightinner->isfew()))
                 {
                     if (rightparent == parent)
-                        shift_left_inner(inner, rightinner, rightparent, parentslot);
+                        shift_left_inner_x(inner, rightinner, rightparent, parentslot);
                     else
                         myres |= merge_inner_x(leftinner, inner, leftparent, parentslot - 1);
                 }
@@ -5104,6 +5115,81 @@ private:
         right->slotuse -= shiftnum;
     }
 
+    /// Balance two inner nodes. The function moves key/data pairs from right
+    /// to left so that both nodes are equally filled. The parent node is
+    /// updated if possible.
+    static void shift_left_inner_x(inner_node* left, inner_node* right, inner_node* parent, unsigned int parentslot)
+    {
+        BTREE_ASSERT(left->level == right->level);
+        BTREE_ASSERT(parent->level == left->level + 1);
+
+        BTREE_ASSERT(left->slotuse < right->slotuse);
+        BTREE_ASSERT(parent->childid[parentslot] == left);
+
+        unsigned short left_slotuse = slotsite::lastfrag(left->slotuse);
+        unsigned short right_slotuse = slotsite::lastfrag(right->slotuse);
+
+        unsigned int shiftnum = slotsite::lastfrag((right_slotuse - left_slotuse) >> 1);
+
+        BTREE_PRINT("Shifting (inner) " << shiftnum << " entries to left " << left << " from right " << right << " with common parent " << parent << ".");
+
+        BTREE_ASSERT(left_slotuse + shiftnum < innerslotmax);
+
+        if (selfverify)
+        {
+            // find the left node's slot in the parent's children and compare to parentslot
+
+            unsigned int leftslot = 0;
+            while (leftslot <= parent->slotuse && parent->childid[leftslot] != left)
+                ++leftslot;
+
+            BTREE_ASSERT(leftslot < parent->slotuse);
+            BTREE_ASSERT(parent->childid[leftslot] == left);
+            BTREE_ASSERT(parent->childid[leftslot + 1] == right);
+
+            BTREE_ASSERT(leftslot == parentslot);
+        }
+
+        // copy the parent's decision slotkey and childid to the first new key on the left
+        left->slotkey[left->slotuse] = parent->slotkey[parentslot];
+        left->slotuse++;
+        left->slotusevalid++;
+
+        // copy the other items from the right node to the last slots in the left node.
+
+        bit_copy(right->bs, right->bs + shiftnum - 1,
+                  left->bs + left_slotuse);
+        std::copy(right->slotkey, right->slotkey + shiftnum - 1,
+                  left->slotkey + left_slotuse);
+        std::copy(right->childid, right->childid + shiftnum,
+                  left->childid + left_slotuse);
+
+
+        // 更新占用和有效利用空格数量
+        slotsite tmpsite(left, left_slotuse + shiftnum - 1);
+        tmpsite--;
+        left->slotuse = tmpsite.getsite();
+        uint16_t validnum = slotsite::countvalid(left, left_slotuse, left_slotuse + shiftnum);
+        left->slotusevalid += validnum
+
+        // fixup parent
+        parent->slotkey[parentslot] = right->slotkey[(slotsite(right, shiftnum)--).getsite()];
+
+
+        // shift all slots in the right node
+
+        std::copy(right->bs + shiftnum, right->bs + right->slotuse,
+                  right->slotkey);
+        std::copy(right->slotkey + shiftnum, right->slotkey + right->slotuse,
+                  right->slotkey);
+        std::copy(right->childid + shiftnum, right->childid + right->slotuse + 1,
+                  right->childid);
+
+        right->slotuse -= shiftnum;
+        right->slotusevalid -= (validnum + 1);
+
+    }
+
     /// Balance two leaf nodes. The function moves key/data pairs from left to
     /// right so that both nodes are equally filled. The parent node is updated
     /// if possible.
@@ -5285,6 +5371,79 @@ private:
         parent->slotkey[parentslot] = left->slotkey[left->slotuse - shiftnum];
 
         left->slotuse -= shiftnum;
+    }
+
+    /// Balance two inner nodes. The function moves key/data pairs from left to
+    /// right so that both nodes are equally filled. The parent node is updated
+    /// if possible.
+    static void shift_right_inner_x(inner_node* left, inner_node* right, inner_node* parent, unsigned int parentslot)
+    {
+        BTREE_ASSERT(left->level == right->level);
+        BTREE_ASSERT(parent->level == left->level + 1);
+
+        BTREE_ASSERT(left->slotuse > right->slotuse);
+        BTREE_ASSERT(parent->childid[parentslot] == left);
+
+        unsigned short left_slotuse = slotsite::lastfrag(left->slotuse);
+        unsigned short right_slotuse = slotsite::lastfrag(right->slotuse);
+
+        unsigned int shiftnum = slotsite::lastfrag((right_slotuse - left_slotuse) >> 1);
+
+        BTREE_PRINT("Shifting (leaf) " << shiftnum << " entries to right " << right << " from left " << left << " with common parent " << parent << ".");
+
+        BTREE_ASSERT(right_slotuse + shiftnum < innerslotmax);
+
+        if (selfverify)
+        {
+            // find the left node's slot in the parent's children
+            unsigned int leftslot = 0;
+            while (leftslot <= parent->slotuse && parent->childid[leftslot] != left)
+                ++leftslot;
+
+            BTREE_ASSERT(leftslot < parent->slotuse);
+            BTREE_ASSERT(parent->childid[leftslot] == left);
+            BTREE_ASSERT(parent->childid[leftslot + 1] == right);
+
+            BTREE_ASSERT(leftslot == parentslot);
+        }
+
+        // shift all slots in the right node
+
+
+        bit_copy_backward(right->bs, right->bs + right_slotuse,
+                           right->bs + right_slotuse + shiftnum);
+        std::copy_backward(right->slotkey, right->slotkey + right_slotuse,
+                           right->slotkey + right_slotuse + shiftnum);
+        std::copy_backward(right->childid, right->childid + right_slotuse + 1,
+                           right->childid + right_slotuse + 1 + shiftnum);
+
+        right->slotuse += shiftnum;
+        uint16_t validnum = slotsite::countvalid(left, 0, shiftnum);
+        right->slotusevalid += (validnum + 1);
+
+
+        // copy the remaining last items from the left node to the first slot in the right node.
+        bit_copy(left->bs + left_slotuse - shiftnum, left->bs + left_slotuse,
+                  right->bs);
+        std::copy(left->slotkey + left_slotuse - shiftnum, left->slotkey + left_slotuse,
+                  right->slotkey);
+        std::copy(left->childid + left_slotuse - shiftnum, left->childid + left_slotuse + 1,
+                  right->childid);
+
+        // copy the parent's decision slotkey and childid to the last new key on the right
+        slotsite tmpsite(right, shiftnum);
+        uint16_t left_lastslot = (tmpsite--).getsite() + 1;
+        right->slotkey[left_lastslot] = parent->slotkey[parentslot];
+        right->bs[left_lastslot] = true;
+
+
+        // copy the first to-be-removed key from the left node to the parent's decision slot
+        tmpsite(left, left_slotuse - shiftnum);
+        tmpsite--;
+
+        parent->slotkey[parentslot] = left->slotkey[tmpsite.getsite()];
+
+        left->slotuse = tmpsite.getsite();
     }
 
 #ifdef BTREE_DEBUG
