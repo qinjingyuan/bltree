@@ -464,6 +464,12 @@ private:
             return (node::slotuse == leafslotmax);
         }
 
+        /// True if the node's slots are full
+        inline bool isalmostfull() const
+        {
+            return (node::slotuse == leafslotmax);
+        }
+
         /// True if few used entries, less than half full
         inline bool isfew() const
         {
@@ -537,10 +543,26 @@ private:
             return s;
         }
 
+        unsigned short nextneargap(){
+            if(!n->bs[site]) return site;
+            unsigned short max = std:min(site + 32, n->slotuse);
+            unsigned short s = site;
+            while(s < max && n->bs[++s] ){ }
+            return s;
+        }
+
         unsigned short prevgap(){
             // unsigned short use = n->slotuse;
             unsigned short s = site;
             while(s > 0 && n->bs[--s]){ }
+            return s;
+        }
+
+        unsigned short prevneargap(){
+            if(!n->bs[site]) return site;
+            unsigned short min = std::max(site - 32, 0);
+            unsigned short s = site;
+            while(s > min && n->bs[--s]){ }
             return s;
         }
 
@@ -564,6 +586,10 @@ private:
 
         static unsigned short lastfrag(unsigned short x){
             return (x | 7) + 1;
+        }
+
+        static unsigned short midsite(uint16_t slotuse){
+            return (slotuse >> 4) * 8;
         }
 
         static uint16_t countvalid(node* n, unsigned short s1, unsigned short s2){
@@ -618,6 +644,11 @@ private:
     /// Using template specialization select the correct converter used by the
     /// iterators
     typedef btree_pair_to_value<value_type, pair_type> pair_to_value_type;
+
+public:
+    void retrain(node * n);
+    void regap(node * n);
+
 
 public:
     // *** Iterators and Reverse Iterators
@@ -3182,7 +3213,6 @@ private:
     }
 
 
-
     // insert x
     std::pair<iterator, bool> insert_descend_x(node* n,
                                              const key_type& key, const data_type& value,
@@ -3287,41 +3317,108 @@ private:
             leaf_node* leaf = static_cast<leaf_node*>(n);
 
             int slot = find_lower_x(leaf, key);
+            int end = 0;
 
             if (!allow_duplicates && slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot])) {
                 return std::pair<iterator, bool>(iterator(leaf, slot), false);
             }
 
-            if (leaf->isfull())
-            {
-                split_leaf_node(leaf, splitkey, splitnode);
-                generate_func_model(leaf);
-                generate_func_model(static_cast<leaf_node*>(*splitnode));
+            // 找到一个大于或者等于key的位置s，如果等于则放在s后，如果大于也放在s后。
+            // 在slot右侧找到下一个空隙位置
+            slotsite tmpsite(leaf, slot);
+            // tmpsite++;
+            // 如果空隙位置为数据最后一个或者大于一定距离x，右侧查找失败；
+            // 则向左侧查找，如果查找空隙位置为第一个或者大于距离x，则左右都查找失败，开始分裂节点
+            // 成功则作出相应移动，将数据放入空隙。
+            uint16_t nextgap = tmpsite.nextneargap();
+            uint16_t prevgap = tmpsite.prevneargap();
+            uint16_t gapsite;
 
-                // check if insert slot is in the split sibling node
-                if (slot >= leaf->slotuse)
-                {
-                    slot -= leaf->slotuse;
-                    leaf = static_cast<leaf_node*>(*splitnode);
+            // 没找到空隙
+            if(leaf->bs[nextgap]){
+                if(leaf->bs[nextgap]){
+                    // 如果在附件两边都没找到空隙，则右移分配空隙，然后确定一个位置，赋值给gapsite
+                    // 如果重新分配时发现右侧也没有空隙了，则分裂节点，最后给出一个位置
+                    if (leaf->isfull() || leaf->isalmostfull())
+                    {
+                        uint16_t slotuse = leaf->slotuse;
+                        split_leaf_node(leaf, splitkey, splitnode);
+                        regap(leaf);
+                        regap(static_cast<leaf_node*>(*splitnode));
+                        retrain(leaf);
+                        retrain(static_cast<leaf_node*>(*splitnode));
+
+                        // check if insert slot is in the split sibling node
+                        if (slot >= slotsite::midsite(slotuse)) {
+                            leaf = static_cast<leaf_node*>(*splitnode);
+                        }
+
+                        slot = find_lower_x(leaf, key);
+                        end = slotsite(leaf, slot).nextneargap();
+
+                    }else{
+                        regap(leaf);
+                        retrain(leaf);
+
+                        // 针对空隙分布方式来确定如何移动元素
+                        // 如果在右侧，向右移动，如果在左侧，向左侧移动。
+                        // 如果分配在中间，则移动出一个元素位置
+
+                        // 重新查找位置，重新选择下一个gap
+                        slot = find_lower_x(leaf, key);
+                        end = slotsite(leaf, slot).nextneargap();
+                    }
+
+                }else{
+                    end = prevgap;
                 }
+
+            }else{
+                end = nextgap;
             }
-            if(leaf->insert_count > 2 || leaf->delete_count > 2){
-                generate_func_model(leaf);
-            }
-            leaf->insert_count++;
+
+            // if(leaf->insert_count > 2 || leaf->delete_count > 2){
+            //     generate_func_model(leaf);
+            // }
+            // leaf->insert_count++;
 
 
             // move items and put data item into correct data slot
             BTREE_ASSERT(slot >= 0 && slot <= leaf->slotuse);
 
-            std::copy_backward(leaf->slotkey + slot, leaf->slotkey + leaf->slotuse,
-                               leaf->slotkey + leaf->slotuse + 1);
-            data_copy_backward(leaf->slotdata + slot, leaf->slotdata + leaf->slotuse,
-                               leaf->slotdata + leaf->slotuse + 1);
+            if(end > slot){
+                std::copy_backward(leaf->slotkey + slot, leaf->slotkey + end,
+                                leaf->slotkey + end + 1);
+                data_copy_backward(leaf->slotdata + slot, leaf->slotdata + end,
+                                leaf->slotdata + end + 1);
+                bit_copy_backward(leaf->bs + slot, leaf->bs + end, leaf->bs + end + 1);
+
+            }else if (end < slot){
+                std::copy(leaf->slotkey + end + 1, leaf->slotkey + slot + 1,
+                                leaf->slotkey + end);
+                data_copy(leaf->slotdata + end + 1, leaf->slotdata + slot + 1,
+                                leaf->slotdata + end);
+                bit_copy(leaf->bs + end + 1, leaf->slotdata + slot + 1, leaf->slotdata + end);
+
+                slotsite tmp(leaf, end);
+                uint16_t beign = end;
+                if(!leaf->bs[end - 1]){
+                    begin = tmp.prevgap();
+                    leaf->slotkey[begin] = leaf->slotkey[end];
+                    leaf->slotdata[begin] = leaf->slotdata[end];
+                    leaf->bs[begin] = true;
+                    leaf->bs[end] = false;
+                }
+
+
+            }
 
             leaf->slotkey[slot] = key;
             if (!used_as_set) leaf->slotdata[slot] = value;
-            leaf->slotuse++;
+
+            // 如果空闲位置是最后一个，那么slotuse需要加一
+            if (end == leaf->slotuse) leaf->slotuse++;
+            leaf->slotusevalid++;
 
             if (splitnode && leaf != *splitnode && slot == leaf->slotuse - 1)
             {
