@@ -536,13 +536,21 @@ private:
             return (site == x.site && n ==  x.n);
         }
 
+        // 下一个空隙的位置
         unsigned short nextgap(){
             unsigned short use = n->slotuse;
             unsigned short s = site;
             while(s < use && n->bs[++s]){ }
             return s;
         }
-
+        // 上一个空隙的位置
+        unsigned short prevgap(){
+            // unsigned short use = n->slotuse;
+            unsigned short s = site;
+            while(s > 0 && n->bs[--s]){ }
+            return s;
+        }
+        //  4个seg内，下一个空隙的位置
         unsigned short nextneargap(){
             if(!n->bs[site]) return site;
             unsigned short max = std:min(site + 32, n->slotuse);
@@ -550,14 +558,7 @@ private:
             while(s < max && n->bs[++s] ){ }
             return s;
         }
-
-        unsigned short prevgap(){
-            // unsigned short use = n->slotuse;
-            unsigned short s = site;
-            while(s > 0 && n->bs[--s]){ }
-            return s;
-        }
-
+        // 4个seg内，上一个空隙的位置
         unsigned short prevneargap(){
             if(!n->bs[site]) return site;
             unsigned short min = std::max(site - 32, 0);
@@ -566,13 +567,14 @@ private:
             return s;
         }
 
+        // 本seg中下一个空隙，如果超过seg，则返回下一个seg的第一个位置
         unsigned short nextgapfrag(){
             unsigned short max = (site | 7) + 1;
             unsigned short s = site;
             while(s < max && n->bs[++s]){ }
             return s;
         }
-
+        // 本seg中上一个空隙，如果超过seg，则返回本seg的第一个位置
         unsigned short prevgapfrag(){
             unsigned short min = (site | 7) - 7;
             unsigned short s = site;
@@ -581,6 +583,10 @@ private:
         }
 
         bool isfisrt(){
+            return (site & 7) == 0; 
+        }
+
+        bool isend(){
             return (site & 7) + 1 == 8; 
         }
 
@@ -4240,7 +4246,7 @@ private:
 
             int slot = find_lower_x(leaf, key);
 
-            if (slot >= leaf->slotuse || !key_equal(key, leaf->slotkey[slot]))
+            if (slot >= leaf->slotuse || !key_equal(key, leaf->slotkey[slot]) || !leaf->bs[slot])
             {
                 BTREE_PRINT("Could not find key " << key << " to erase.");
 
@@ -4249,26 +4255,127 @@ private:
 
             BTREE_PRINT("Found key in leaf " << curr << " at slot " << slot);
 
-            int seg_end;
-            seg_end = slot;
-            while(seg_end < leaf->slotuse && leaf->bs[++seg_end] && (seg_end & 7 == 0)){
+            slotsite tmpslot(leaf, slot);
+            int seg_end = tmpslot.nextgapfrag();
+
+            // slot和下一个空隙只相差1时，说明是seg中最后一个或者剩余的最后一个
+            if(seg_end - 1 > slot ){
+                // 大多数情况，被删除元素在seg的中间
+                std::copy(leaf->slotkey + slot + 1, leaf->slotkey + seg_end,
+                        leaf->slotkey + slot);
+                data_copy(leaf->slotdata + slot + 1, leaf->slotdata + seg_end,
+                        leaf->slotdata + slot);
+                bit_copy(leaf->bs + slot + 1, leaf->bs + seg_end,
+                        leaf->bs + slot);
+                if(seg_end == leaf->slotuse) leaf->slotuse--;
+                leaf->slotusevaild--;
 
             }
+            else if(!tmpslot.isfisrt()){
+                // 被删除元素在seg的最后一个,但不是第一个
+                leaf->bs[slot] = false;
+                if(seg_end == leaf->slotuse) leaf->slotuse--;
+                leaf->slotusevaild--;
+            }
+            else{
+                // 被删除元素在seg的最后一个,也是第一个
+                // 向前找多个元素和向后找多个元素，如果找到则拆分，找不到则regap
+                bool next_find = false,prev_find = false;
+                uint16_t begin,end;
 
-            // std::copy(leaf->slotkey + slot + 1, leaf->slotkey + leaf->slotuse,
-            //           leaf->slotkey + slot);
-            // data_copy(leaf->slotdata + slot + 1, leaf->slotdata + leaf->slotuse,
-            //           leaf->slotdata + slot);
+                if(slot + 1 == leaf->slotuse){
+                    // 最后一个seg剩余最后一个
+                    leaf->bs[slot] = false;
+                    tmpslot--;
+                    leaf->slotuse = tmpslot.getsite() + 1;
+                    slot = tmpslot.getsite() + 1;
+                    leaf->slotusevalid--;
 
-            std::copy(leaf->slotkey + slot + 1, leaf->slotkey + seg_end,
-                      leaf->slotkey + slot);
-            data_copy(leaf->slotdata + slot + 1, leaf->slotdata + seg_end,
-                      leaf->slotdata + slot);
-            bit_copy(leaf->bs + slot + 1, leaf->bs + seg_end,
-                      leaf->bs + slot);
+                }else if(slot == 0){
+                    // 第一个seg只剩一个元素时，只在右侧查找
+                    tmpslot++;
+                    begin = tmpslot.getsite();
+                    end = tmpslot.nextgapfrag();
+                    if(end - begin > 1){
+                        // copy
+                        std::copy(leaf->slotkey + begin, leaf->slotkey + ((begin+end)>>1),
+                                leaf->slotkey + slot);
+                        data_copy(leaf->slotdata + begin, leaf->slotdata + ((begin+end)>>1),
+                                leaf->slotdata + slot);
+                        bit_copy(leaf->bs + begin, leaf->bs + ((begin+end)>>1),
+                                leaf->bs + slot);
 
-            leaf->slotuse--;
-            leaf->slotusevaild--;
+                        std::copy(leaf->slotkey + ((begin+end)>>1), leaf->slotkey + end,
+                                leaf->slotkey + begin);
+                        data_copy(leaf->slotdata + ((begin+end)>>1), leaf->slotdata + end,
+                                leaf->slotdata + begin);
+                        bit_copy(leaf->bs + ((begin+end)>>1), leaf->bs + end,
+                                leaf->bs + begin);
+                        leaf->slotusevalid--;
+                        next_find = true;
+                    }
+
+                    if(next_find == false){
+                        leaf->bs[slot] = false;
+                        leaf->slotusevalid--;
+                        regap(leaf);
+                        retrain(leaf);
+                    }
+
+                }else{
+                    // seg在中间，先在右侧查找，再在左侧查找
+                    tmpslot++;
+                    begin = tmpslot.getsite();
+                    end = tmpslot.nextgapfrag();
+                    if(end - begin > 1){
+                        // copy
+                        std::copy(leaf->slotkey + begin, leaf->slotkey + ((begin+end)>>1),
+                                leaf->slotkey + slot);
+                        data_copy(leaf->slotdata + begin, leaf->slotdata + ((begin+end)>>1),
+                                leaf->slotdata + slot);
+                        bit_copy(leaf->bs + begin, leaf->bs + ((begin+end)>>1),
+                                leaf->bs + slot);
+
+                        std::copy(leaf->slotkey + ((begin+end)>>1), leaf->slotkey + end,
+                                leaf->slotkey + begin);
+                        data_copy(leaf->slotdata + ((begin+end)>>1), leaf->slotdata + end,
+                                leaf->slotdata + begin);
+                        bit_copy(leaf->bs + ((begin+end)>>1), leaf->bs + end,
+                                leaf->bs + begin);
+                        leaf->slotusevalid--;
+                        next_find = true;
+                    }
+
+
+                    tmpslot--;
+                    tmpslot--;
+                    uint16_t begin = tmpslot.prevgapfrag();
+                    uint16_t end = tmpslot.nextgapfrag();
+
+                    if(next_find == false && end - begin > 1){
+                        // copy
+                        std::copy(leaf->slotkey + ((begin+end)>>1), leaf->slotkey + end,
+                                leaf->slotkey + slot);
+                        data_copy(leaf->slotdata + ((begin+end)>>1), leaf->slotdata + end,
+                                leaf->slotdata + slot);
+                        bit_copy(leaf->bs + ((begin+end)>>1), leaf->bs + end,
+                                leaf->bs + slot);
+                        leaf->slotusevalid--;
+                        prev_find = true;
+                    }
+
+                    if(next_find == false && prev_find == false){
+                        leaf->bs[slot] = false;
+                        leaf->slotusevalid--;
+                        regap(leaf);
+                        retrain(leaf);
+                        // slot = find_lower_x(leaf, key);
+                    }
+
+                }
+            }
+
+
 
             result_t myres = result_t(btree_ok);
 
@@ -4298,6 +4405,7 @@ private:
             // check gap nums
             if(leaf->slotuse - leaf->slotusevalid > static_cast<unsigned short>(0.4 * leaf->slotuse)){
                 regap(leaf);
+                retrain(leaf);
             }
 
             if (leaf->isunderflow() && !(leaf == m_root && leaf->slotuse >= 1))
@@ -4378,18 +4486,14 @@ private:
             node* myleft, * myright;
             inner_node* myleftparent, * myrightparent;
 
-            int slot = find_lower_x(inner, key);
-            
+            int slot = find_lower(inner, key);
 
             if (slot == 0) {
                 myleft = (left == NULL) ? NULL : (static_cast<inner_node*>(left))->childid[left->slotuse - 1];
                 myleftparent = leftparent;
             }
             else {
-                // while(!inner->bs[--slot]){ }
-                slotsite tmpslot(inner, slot);
-                tmpslot--;
-                myleft = inner->childid[tmpslot.getsite()];
+                myleft = inner->childid[slot - 1];
                 myleftparent = inner;
             }
 
@@ -4398,16 +4502,13 @@ private:
                 myrightparent = rightparent;
             }
             else {
-                // while(!inner->bs[++slot]){ }
-                slotsite tmpslot(inner, slot);
-                tmpslot++;
-                myright = inner->childid[tmpslot.getsite()];
+                myright = inner->childid[slot + 1];
                 myrightparent = inner;
             }
 
             BTREE_PRINT("erase_one_descend into " << inner->childid[slot]);
 
-            result_t result = erase_one_descend_x(key,
+            result_t result = erase_one_descend(key,
                                                 inner->childid[slot],
                                                 myleft, myright,
                                                 myleftparent, myrightparent,
@@ -4415,14 +4516,11 @@ private:
 
             result_t myres = result_t(btree_ok);
 
-            // ??? 
             if (result.has(btree_not_found))
             {
                 return result_t(result);
             }
 
-            // 如果下层节点删除的是最后一个key，传到上层节点；
-            // 如果删除的是父节点的最后一个元素，需要继续上传；否则直接更改
             if (result.has(btree_update_lastkey))
             {
                 if (parent && parentslot < parent->slotuse)
@@ -4442,59 +4540,25 @@ private:
             if (result.has(btree_fixmerge))
             {
                 // either the current node or the next is empty and should be removed
-                // 因为进行了合并，要让slot指向合并后为空的索引节点
-                slotsite tmpslot(inner, slot);
-                if (inner->childid[slot]->slotuse != 0){
-                    tmpslot++;
-                    slot = tmpslot.getsite();
-                }
+                if (inner->childid[slot]->slotuse != 0)
+                    slot++;
 
                 // this is the child slot invalidated by the merge
                 BTREE_ASSERT(inner->childid[slot]->slotuse == 0);
 
                 free_node(inner->childid[slot]);
 
-                // 保持gap数组
-                tmpslot--;
-                inner->slotkey[tmpslot.getsite()] = inner->slotkey[slot];
-                inner->bs.reset(slot);
-                tmpslot++;
-                slot = tmpslot.getsite();
-                unsigned short end = tmpslot.nextgapfrag();
+                std::copy(inner->slotkey + slot, inner->slotkey + inner->slotuse,
+                          inner->slotkey + slot - 1);
+                std::copy(inner->childid + slot + 1, inner->childid + inner->slotuse + 1,
+                          inner->childid + slot);
 
-                // 这里为什么childid比slotkey大1，因为合并时是右节点向左合并
-                // 如果左节点向右合并，他们就是一样大，但需要移动两次
-                // 使用gap数组时，它们相差1不利于进行gap数据控制
-                if(!tmpslot.isfisrt()){
-                    if(tmpslot.nextgapfrag() == inner->slotuse){
-                        // 如果是最后一个片段，移动时childid要加一
-
-                        std::copy(inner->slotkey + slot, inner->slotkey + inner->slotuse,
-                                inner->slotkey + slot - 1);
-                        std::copy(inner->childid + slot, inner->childid + inner->slotuse + 1,
-                                inner->childid + slot - 1);
-                        bit_copy(inner->bs + slot, inner->bs + end,
-                                inner->bs + slot - 1);
-                        inner->slotusevalid--;
-
-                    }else{
-                        std::copy(inner->slotkey + slot, inner->slotkey + end,
-                                inner->slotkey + slot - 1);
-                        std::copy(inner->childid + slot , inner->childid + end,
-                                inner->childid + slot - 1);
-                        bit_copy(inner->bs + slot, inner->bs + end,
-                                inner->bs + slot - 1);
-                    }
-                }
-
-                // 无论哪种情况，有效数量都要-1
-                inner->slotusevalid--;
+                inner->slotuse--;
 
                 if (inner->level == 1)
                 {
                     // fix split key for children leaves
-                    tmpslot--;
-                    slot == tmpslot.getsite();
+                    slot--;
                     leaf_node* child = static_cast<leaf_node*>(inner->childid[slot]);
                     inner->slotkey[slot] = child->slotkey[child->slotuse - 1];
                 }
@@ -4521,17 +4585,17 @@ private:
                 else if ((leftinner == NULL || leftinner->isfew()) && (rightinner == NULL || rightinner->isfew()))
                 {
                     if (leftparent == parent)
-                        myres |= merge_inner_x(leftinner, inner, leftparent, (slotsite(parent,parentslot)--).getsite());
+                        myres |= merge_inner(leftinner, inner, leftparent, parentslot - 1);
                     else
-                        myres |= merge_inner_x(inner, rightinner, rightparent, parentslot);
+                        myres |= merge_inner(inner, rightinner, rightparent, parentslot);
                 }
                 // case : the right leaf has extra data, so balance right with current
                 else if ((leftinner != NULL && leftinner->isfew()) && (rightinner != NULL && !rightinner->isfew()))
                 {
                     if (rightparent == parent)
-                        shift_left_inner_x(inner, rightinner, rightparent, parentslot);
+                        shift_left_inner(inner, rightinner, rightparent, parentslot);
                     else
-                        myres |= merge_inner_x(leftinner, inner, leftparent, parentslot - 1);
+                        myres |= merge_inner(leftinner, inner, leftparent, parentslot - 1);
                 }
                 // case : the left leaf has extra data, so balance left with current
                 else if ((leftinner != NULL && !leftinner->isfew()) && (rightinner != NULL && rightinner->isfew()))
@@ -4539,7 +4603,7 @@ private:
                     if (leftparent == parent)
                         shift_right_inner(leftinner, inner, leftparent, parentslot - 1);
                     else
-                        myres |= merge_inner_x(inner, rightinner, rightparent, parentslot);
+                        myres |= merge_inner(inner, rightinner, rightparent, parentslot);
                 }
                 // case : both the leaf and right leaves have extra data and our
                 // parent, choose the leaf with more data
