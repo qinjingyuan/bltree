@@ -609,6 +609,15 @@ private:
             return count;
         }
 
+
+        static bool isgap(size_t s){
+            return (s | 7) >= 6 && (s | 7) < 8;
+        }
+
+        static double eletate(){
+            return 0.75;
+        }
+
     };
 
 private:
@@ -3656,11 +3665,13 @@ public:
         m_stats.itemcount = iend - ibegin;
 
         // calculate number of leaves needed, round up.
+        // 计算需要多少个叶子节点
         size_t num_items = iend - ibegin;
-        size_t num_leaves = (num_items + leafslotmax - 1) / leafslotmax;
+        size_t num_leaves = (num_items + leafslotmax - 1) / (leafslotmax * slotsite::eletate());
 
         BTREE_PRINT("btree::bulk_load, level 0: " << m_stats.itemcount << " items into " << num_leaves << " leaves with up to " << ((iend - ibegin + num_leaves - 1) / num_leaves) << " items per leaf.");
 
+        // 为每个叶子节点赋值
         Iterator it = ibegin;
         for (size_t i = 0; i < num_leaves; ++i)
         {
@@ -3669,9 +3680,17 @@ public:
 
             // copy keys or (key,value) pairs into leaf nodes, uses template
             // switch leaf->set_slot().
+            uint16_t ecount = 0;
             leaf->slotuse = static_cast<int>(num_items / (num_leaves - i));
-            for (size_t s = 0; s < leaf->slotuse; ++s, ++it)
-                leaf->set_slot(s, *it);
+            for (size_t s = 0; s < leaf->slotuse; ++s){
+                if(!slotsite::isgap(s)){
+                    leaf->set_slot(s, *it);
+                    leaf->bs[s] = true;
+                    ++it;
+                    ++ecount;
+                }
+            }
+
 
             if (m_tailleaf != NULL) {
                 m_tailleaf->nextleaf = leaf;
@@ -3682,8 +3701,8 @@ public:
             }
             m_tailleaf = leaf;
 
-            num_items -= leaf->slotuse;
-            generate_func_model(leaf);
+            num_items -= ecount;
+            retrain(leaf);
         }
 
         BTREE_ASSERT(it == iend && num_items == 0);
@@ -3697,11 +3716,13 @@ public:
         BTREE_ASSERT(m_stats.leaves == num_leaves);
 
         // create first level of inner nodes, pointing to the leaves.
+        // 计算第二层有多少个元素，有多少个中间节点
         size_t num_parents = (num_leaves + (innerslotmax + 1) - 1) / (innerslotmax + 1);
 
         BTREE_PRINT("btree::bulk_load, level 1: " << num_leaves << " leaves in " << num_parents << " inner nodes with up to " << ((num_leaves + num_parents - 1) / num_parents) << " leaves per inner node.");
 
         // save inner nodes and maxkey for next level.
+        // 保存内部节点和maxkey以供下一级使用。
         typedef std::pair<inner_node*, const key_type*> nextlevel_type;
         nextlevel_type* nextlevel = new nextlevel_type[num_parents];
 
@@ -3730,12 +3751,13 @@ public:
 
             leaf = leaf->nextleaf;
             num_leaves -= n->slotuse + 1;
-            generate_func_model(n);
+            retrain(n);
         }
 
         BTREE_ASSERT(leaf == NULL && num_leaves == 0);
 
         // recursively build inner nodes pointing to inner nodes.
+        // 递归构建中间节点
         for (int level = 2; num_parents != 1; ++level)
         {
             size_t num_children = num_parents;
@@ -3769,7 +3791,7 @@ public:
 
                 ++inner_index;
                 num_children -= n->slotuse + 1;
-                generate_func_model(n);
+                retrain(n);
             }
 
             BTREE_ASSERT(num_children == 0);
