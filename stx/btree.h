@@ -360,10 +360,12 @@ private:
         // double fe = 0;
         // size_t rfa = 0;
         // size_t rfb = 0;
-        uint16_t gap_ratio = 0;
+        // uint16_t gap_ratio = 0;
         uint16_t insert_count = 0;
+        uint16_t max_insert_count = 0;
         uint16_t delete_count = 0;
-        unsigned short model_slotuse;
+        uint16_t select_count = 0;
+        // unsigned short model_slotuse;
 
         /// Delayed initialisation of constructed node
         inline node(const unsigned short l, const unsigned short s = 0)
@@ -505,6 +507,7 @@ private:
         inline key_type minkey() const {
             return slotkey[0];
         }
+
         inline key_type maxkey() const {
             return slotkey[node::slotuse-1];
         }
@@ -514,7 +517,7 @@ private:
     struct slotsite{
         node* n;
         unsigned short site;
-        slotsite(node* n, unsigned short v) : node(n), site(v){}
+        slotsite(node* nd, unsigned short v) : n(nd), site(v){}
 
         unsigned short getsite(){
             return site;
@@ -553,7 +556,7 @@ private:
         //  4个seg内，下一个空隙的位置
         unsigned short nextneargap(){
             if(!n->bs[site]) return site;
-            unsigned short max = std:min(site + 32, n->slotuse);
+            unsigned short max = std::min(site + 32, n->slotuse + 0);
             unsigned short s = site;
             while(s < max && n->bs[++s] ){ }
             return s;
@@ -613,6 +616,9 @@ private:
         static bool isgap(size_t s){
             return (s | 7) >= 6 && (s | 7) < 8;
         }
+        static bool isgap1(size_t s){
+            return (s | 7) == 7;
+        }
 
         static double eletate(){
             return 0.75;
@@ -661,8 +667,152 @@ private:
     typedef btree_pair_to_value<value_type, pair_type> pair_to_value_type;
 
 public:
-    void retrain(node * n);
-    void regap(node * n);
+
+    struct  leaf_ele
+    {
+        key_type k;
+        data_type d;
+        bool isvalid; 
+    };
+    
+    void regap(leaf_node * n){
+        /* 
+            if select / all > 0.8
+                gap = 1
+                regap
+            else 
+                if maxinsert / insert > 0.9
+                    gap = 1
+                    regap
+                else
+                    gap = (delete / allchange) * 8 * 2
+                    ai regap 
+
+         */
+        
+        size_t ins = n->insert_count;
+        size_t del = n->delete_count;
+        size_t sel = n->select_count;
+        size_t maxins = n->max_insert_count;
+        size_t all = ins + del + sel;
+        size_t allchange = ins + del;
+        uint16_t gap = 0;
+
+
+
+        // if(sel / all > 0.8){
+        //     gap = 1;
+        // } else{
+        //     if(maxins / ins > 0.9){
+        //         gap = 1;
+        //     }else{
+        //         gap = static_cast<uint16_t>((del / allchange) * 4 + 4);
+        //     }
+        // }
+
+
+        // if(gap == 1){
+        //     int placed = 0;
+        //     std::deque<leaf_ele> tmpqueue;
+        //     for(int i = 0; i < n->slotuse; i++){
+        //         if(n->bs[i]){
+        //             if(placed < i){
+        //                 // 不是空隙时，进行装填
+        //                 if(!slotsite::isgap1(placed)){
+        //                     if(tmpqueue.size() != 0){
+        //                         leaf_ele t = {n->slotkey[i], n->slotdata[i], n->bs[i]};
+        //                         tmpqueue.push_back(t);
+
+        //                         leaf_ele d = tmpqueue.front();
+        //                         n->slotkey[placed] = d.k;
+        //                         n->slotdata[placed] = d.d;
+        //                         n->bs[placed] = d.isvalid;
+        //                         tmpqueue.pop_front();
+
+        //                     }
+        //                     else{
+        //                         n->slotkey[placed] = n->slotkey[i];
+        //                         n->slotdata[placed] = n->slotdata[i];
+        //                         n->bs[placed] = n->bs[i];
+
+        //                     }
+
+        //                 }
+        //                 ++placed;
+
+        //             }
+        //             else{
+        //                 leaf_ele t = {n->slotkey[i], n->slotdata[i], n->bs[i]};
+        //                 tmpqueue.push_back(t);
+
+        //             }
+        //         }
+        //     }
+
+        //     if(tmpqueue.size() != 0){
+                
+        //     }
+
+        // }
+
+
+        int placed = 0;
+        std::deque<leaf_ele> tmpqueue;
+        for(int i = 0; i < n->slotuse; i++){
+            if(n->bs[i]){
+                if(placed < i){
+                    // 不是空隙时，进行装填
+                    if(!slotsite::isgap(placed)){
+                        if(tmpqueue.size() != 0){
+                            leaf_ele t = {n->slotkey[i], n->slotdata[i], n->bs[i]};
+                            tmpqueue.push_back(t);
+
+                            leaf_ele d = tmpqueue.front();
+                            n->slotkey[placed] = d.k;
+                            n->slotdata[placed] = d.d;
+                            n->bs[placed] = d.isvalid;
+                            tmpqueue.pop_front();
+
+                        }
+                        else{
+                            n->slotkey[placed] = n->slotkey[i];
+                            n->slotdata[placed] = n->slotdata[i];
+                            n->bs[placed] = n->bs[i];
+
+                        }
+
+                    }
+                    ++placed;
+
+                }
+                else{
+                    leaf_ele t = {n->slotkey[i], n->slotdata[i], n->bs[i]};
+                    tmpqueue.push_back(t);
+
+                }
+            }
+        }
+
+        if(tmpqueue.size() != 0){
+            for(; placed < n->slotuse; placed++){
+                if(!slotsite::isgap(placed)){
+                    if(tmpqueue.size() != 0){
+
+                        leaf_ele d = tmpqueue.front();
+                        n->slotkey[placed] = d.k;
+                        n->slotdata[placed] = d.d;
+                        n->bs[placed] = d.isvalid;
+                        tmpqueue.pop_front();
+
+                    }
+
+
+                }
+            }
+        }
+
+
+    }
 
 
 public:
@@ -1756,6 +1906,18 @@ private:
         else return std::copy_backward(first, last, result);
     }
 
+
+    void bit_copy(std::bitset<leafslotmax+1>& bs, int first, int last, int result){
+        for(; first < last; first++, result++){
+            bs[result] = bs[first];
+        }
+    }
+    void bit_copy_backward(std::bitset<leafslotmax+1>& bs, int first, int last, int result){
+        for(; first < last; last--, result--){
+            bs[result-1] = bs[last-1];
+        }
+    }
+
 public:
     // *** Fast Destruction of the B+ Tree
 
@@ -2205,11 +2367,6 @@ gaps_count[btree_level]++;
 
 
 
-    // generate duoxiangshi model
-    template<typename T>
-    inline bool generate_func_model(T* n){
-        return node_training(n);
-    }
 
     double meaning_distance(std::vector<double>& fa, std::vector<double>& fb, std::vector<double>& keys, std::vector<double>& sites, int begin, int end){
         double k,b,up=0,down=0,sum_up=0,sum_dowm=0;
@@ -2225,7 +2382,7 @@ gaps_count[btree_level]++;
 
     // generate duoxiangshi model
     template<typename T>
-    bool node_training(T* n){
+    bool retrain(T* n){
         // sure s1 != 0, define 5 site for compute k.
 
         int hi,lo,ele_gap,ele_num,base_site,r;
@@ -3233,6 +3390,8 @@ private:
                                              const key_type& key, const data_type& value,
                                              key_type* splitkey, node** splitnode)
     {
+        n->insert_count++;
+
         if (!n->isleafnode())
         {
             inner_node* inner = static_cast<inner_node*>(n);
@@ -3255,8 +3414,8 @@ private:
                 {
                     // 返回的是做节点的key，和右节点的地址
                     split_inner_node(inner, splitkey, splitnode, slot);
-                    generate_func_model(inner);
-                    generate_func_model(static_cast<inner_node*>(*splitnode));
+                    retrain(inner);
+                    retrain(static_cast<inner_node*>(*splitnode));
 
                     BTREE_PRINT("btree::insert_descend done split_inner: putslot: " << slot << " putkey: " << newkey << " upkey: " << *splitkey);
 
@@ -3319,10 +3478,9 @@ private:
                 inner->slotuse++;
             }
 
-            if(inner->insert_count > 2 || inner->delete_count > 2){
-                generate_func_model(inner);
+            if(inner->insert_count > 3 || inner->delete_count > 3){
+                retrain(inner);
             }
-            inner->insert_count++;
 
 
             return r;
@@ -3392,12 +3550,6 @@ private:
                 end = nextgap;
             }
 
-            // if(leaf->insert_count > 2 || leaf->delete_count > 2){
-            //     generate_func_model(leaf);
-            // }
-            // leaf->insert_count++;
-
-
             // move items and put data item into correct data slot
             BTREE_ASSERT(slot >= 0 && slot <= leaf->slotuse);
 
@@ -3406,19 +3558,19 @@ private:
                                 leaf->slotkey + end + 1);
                 data_copy_backward(leaf->slotdata + slot, leaf->slotdata + end,
                                 leaf->slotdata + end + 1);
-                bit_copy_backward(leaf->bs + slot, leaf->bs + end, leaf->bs + end + 1);
+                bit_copy_backward(leaf->bs, slot, end, end + 1);
 
             }else if (end < slot){
                 std::copy(leaf->slotkey + end + 1, leaf->slotkey + slot + 1,
                                 leaf->slotkey + end);
                 data_copy(leaf->slotdata + end + 1, leaf->slotdata + slot + 1,
                                 leaf->slotdata + end);
-                bit_copy(leaf->bs + end + 1, leaf->slotdata + slot + 1, leaf->slotdata + end);
+                bit_copy(leaf->bs, end + 1, slot + 1, end);
 
                 slotsite tmp(leaf, end);
                 uint16_t beign = end;
                 if(!leaf->bs[end - 1]){
-                    begin = tmp.prevgap();
+                    uint16_t begin = tmp.prevgap();
                     leaf->slotkey[begin] = leaf->slotkey[end];
                     leaf->slotdata[begin] = leaf->slotdata[end];
                     leaf->bs[begin] = true;
@@ -4260,6 +4412,7 @@ private:
                                inner_node* leftparent, inner_node* rightparent,
                                inner_node* parent, unsigned int parentslot)
     {
+        curr->delete_count++;
         if (curr->isleafnode())
         {
             leaf_node* leaf = static_cast<leaf_node*>(curr);
@@ -4287,8 +4440,7 @@ private:
                         leaf->slotkey + slot);
                 data_copy(leaf->slotdata + slot + 1, leaf->slotdata + seg_end,
                         leaf->slotdata + slot);
-                bit_copy(leaf->bs + slot + 1, leaf->bs + seg_end,
-                        leaf->bs + slot);
+                bit_copy(leaf->bs, slot + 1, seg_end, slot);
                 if(seg_end == leaf->slotuse) leaf->slotuse--;
                 leaf->slotusevaild--;
 
@@ -4324,15 +4476,13 @@ private:
                                 leaf->slotkey + slot);
                         data_copy(leaf->slotdata + begin, leaf->slotdata + ((begin+end)>>1),
                                 leaf->slotdata + slot);
-                        bit_copy(leaf->bs + begin, leaf->bs + ((begin+end)>>1),
-                                leaf->bs + slot);
+                        bit_copy(leaf->bs, begin, ((begin+end)>>1),  slot);
 
                         std::copy(leaf->slotkey + ((begin+end)>>1), leaf->slotkey + end,
                                 leaf->slotkey + begin);
                         data_copy(leaf->slotdata + ((begin+end)>>1), leaf->slotdata + end,
                                 leaf->slotdata + begin);
-                        bit_copy(leaf->bs + ((begin+end)>>1), leaf->bs + end,
-                                leaf->bs + begin);
+                        bit_copy(leaf->bs, ((begin+end)>>1), end, begin);
                         leaf->slotusevalid--;
                         next_find = true;
                     }
@@ -4355,15 +4505,13 @@ private:
                                 leaf->slotkey + slot);
                         data_copy(leaf->slotdata + begin, leaf->slotdata + ((begin+end)>>1),
                                 leaf->slotdata + slot);
-                        bit_copy(leaf->bs + begin, leaf->bs + ((begin+end)>>1),
-                                leaf->bs + slot);
+                        bit_copy(leaf->bs, begin, ((begin+end)>>1),  slot);
 
                         std::copy(leaf->slotkey + ((begin+end)>>1), leaf->slotkey + end,
                                 leaf->slotkey + begin);
                         data_copy(leaf->slotdata + ((begin+end)>>1), leaf->slotdata + end,
                                 leaf->slotdata + begin);
-                        bit_copy(leaf->bs + ((begin+end)>>1), leaf->bs + end,
-                                leaf->bs + begin);
+                        bit_copy(leaf->bs, ((begin+end)>>1), end,  begin);
                         leaf->slotusevalid--;
                         next_find = true;
                     }
@@ -4371,8 +4519,8 @@ private:
 
                     tmpslot--;
                     tmpslot--;
-                    uint16_t begin = tmpslot.prevgapfrag();
-                    uint16_t end = tmpslot.nextgapfrag();
+                    begin = tmpslot.prevgapfrag();
+                    end = tmpslot.nextgapfrag();
 
                     if(next_find == false && end - begin > 1){
                         // copy
@@ -4380,8 +4528,7 @@ private:
                                 leaf->slotkey + slot);
                         data_copy(leaf->slotdata + ((begin+end)>>1), leaf->slotdata + end,
                                 leaf->slotdata + slot);
-                        bit_copy(leaf->bs + ((begin+end)>>1), leaf->bs + end,
-                                leaf->bs + slot);
+                        bit_copy(leaf->bs, ((begin+end)>>1), end,  slot);
                         leaf->slotusevalid--;
                         prev_find = true;
                     }
@@ -4643,6 +4790,10 @@ private:
                     else
                         shift_left_inner(inner, rightinner, rightparent, parentslot);
                 }
+            }
+
+            if(inner->insert_count > 3 || inner->delete_count > 3){
+                retrain(inner);
             }
 
             return result_t(myres);
@@ -5000,17 +5151,17 @@ private:
         BTREE_ASSERT(left->isleafnode() && right->isleafnode());
         BTREE_ASSERT(parent->level == 1);
 
-        unsigned short left_slotuse = left->slotuse | (unsigned short)7
-        unsigned short right_slotuse = right->slotuse | (unsigned short)7
+        unsigned short left_slotuse = slotsite::lastfrag(left->slotuse);
+        unsigned short right_slotuse = slotsite::lastfrag(right->slotuse);
 
         BTREE_ASSERT(left_slotuse + right_slotuse < leafslotmax);
 
+        // 将右节点的数据拷贝到左节点
         std::copy(right->slotkey, right->slotkey + right_slotuse,
                   left->slotkey + left_slotuse);
         data_copy(right->slotdata, right->slotdata + right_slotuse,
                   left->slotdata + left_slotuse);
-        bit_copy(right->bs, right->bs + right_slotuse,
-                  left->bs + left_slotuse);
+        bit_copy(right->bs, 0 , right_slotuse,  left_slotuse);
 
         left->slotuse += right_slotuse;
         left->slotusevalid += right->slotusevalid;
@@ -5110,8 +5261,7 @@ private:
                   left->slotkey + write_end);
         std::copy(right->childid, right->childid + right->slotuse + 1,
                   left->childid + write_end);
-        bit_copy(right->bs, right->bs + right->slotuse,
-                  left->bs + write_end);
+        bit_copy(right->bs, 0, right->slotuse, write_end);
 
         left->slotuse += right->slotuse;
         left->slotusevalid += right->slotusevalid;
@@ -5196,8 +5346,7 @@ private:
                   left->slotkey + left_slotuse);
         data_copy(right->slotdata, right->slotdata + shiftnum,
                   left->slotdata + left_slotuse);
-        bit_copy(right->slotdata, right->slotdata + shiftnum,
-                  left->slotdata + left_slotuse);
+        bit_copy(right->bs, 0, shiftnum,  left_slotuse);
 
         unsigned short last_gap_num = 0;
         while(!left->bs[left_slotuse + shiftnum - last_gap_num - 1]){
@@ -5222,8 +5371,7 @@ private:
                   right->slotkey);
         data_copy(right->slotdata + shiftnum, right->slotdata + right->slotuse,
                   right->slotdata);
-        bit_copy(right->bs + shiftnum, right->bs + right->bs,
-                  right->bs);
+        bit_copy(right->bs, shiftnum, right->slotuse, 0);
 
         right->slotuse -= shiftnum;
         right->slotusevalid -= valid_nums;
@@ -5340,8 +5488,7 @@ private:
 
         // copy the other items from the right node to the last slots in the left node.
 
-        bit_copy(right->bs, right->bs + shiftnum - 1,
-                  left->bs + left_slotuse);
+        bit_copy(right->bs, 0, shiftnum - 1, left_slotuse);
         std::copy(right->slotkey, right->slotkey + shiftnum - 1,
                   left->slotkey + left_slotuse);
         std::copy(right->childid, right->childid + shiftnum,
@@ -5353,7 +5500,7 @@ private:
         tmpsite--;
         left->slotuse = tmpsite.getsite();
         uint16_t validnum = slotsite::countvalid(left, left_slotuse, left_slotuse + shiftnum);
-        left->slotusevalid += validnum
+        left->slotusevalid += validnum;
 
         // fixup parent
         parent->slotkey[parentslot] = right->slotkey[(slotsite(right, shiftnum)--).getsite()];
@@ -5439,10 +5586,10 @@ private:
 
         BTREE_ASSERT(left->slotuse > right->slotuse);
 
-        unsigned short left_slotuse = (left->slotuse | (unsigned short)7) + 1;
-        unsigned short right_slotuse = (right->slotuse | (unsigned short)7) + 1;
+        unsigned short left_slotuse = slotsite::lastfrag(left->slotuse);
+        unsigned short right_slotuse = slotsite::lastfrag(right->slotuse);
 
-        unsigned int shiftnum = (((right_slotuse - left_slotuse) >> 1) | (unsigned short)7)+1;
+        unsigned int shiftnum = slotsite::lastfrag((right_slotuse - left_slotuse) >> 1);
 
         BTREE_PRINT("Shifting (leaf) " << shiftnum << " entries to right " << right << " from left " << left << " with common parent " << parent << ".");
 
@@ -5468,8 +5615,7 @@ private:
                            right->slotkey + right_slotuse + shiftnum);
         data_copy_backward(right->slotdata, right->slotdata + right_slotuse,
                            right->slotdata + right_slotuse + shiftnum);
-        bit_copy_backward(right->bs, right->bs + right_slotuse,
-                           right->bs + right_slotuse + shiftnum);
+        bit_copy_backward(right->bs, 0, right_slotuse, right_slotuse + shiftnum);
 
         right->slotuse += shiftnum;
         // compute valid ele nums
@@ -5484,10 +5630,9 @@ private:
         // copy the last items from the left node to the first slot in the right node.
         std::copy(left->slotkey + left_slotuse - shiftnum, left->slotkey + left_slotuse,
                   right->slotkey);
-        data_copy(left->slotdata + left__slotuse - shiftnum, left->slotdata + left_slotuse,
+        data_copy(left->slotdata + left_slotuse - shiftnum, left->slotdata + left_slotuse,
                   right->slotdata);
-        bit_copy(left->bs + left_slotuse - shiftnum, left->bs + left_slotuse,
-                  right->bs);
+        bit_copy(left->bs, left_slotuse - shiftnum, left_slotuse, 0);
 
 
         unsigned short last_gap_num = 0;
@@ -5593,8 +5738,7 @@ private:
         // shift all slots in the right node
 
 
-        bit_copy_backward(right->bs, right->bs + right_slotuse,
-                           right->bs + right_slotuse + shiftnum);
+        bit_copy_backward(right->bs, 0, right_slotuse, right_slotuse + shiftnum);
         std::copy_backward(right->slotkey, right->slotkey + right_slotuse,
                            right->slotkey + right_slotuse + shiftnum);
         std::copy_backward(right->childid, right->childid + right_slotuse + 1,
@@ -5606,8 +5750,7 @@ private:
 
 
         // copy the remaining last items from the left node to the first slot in the right node.
-        bit_copy(left->bs + left_slotuse - shiftnum, left->bs + left_slotuse,
-                  right->bs);
+        bit_copy(left->bs, left_slotuse - shiftnum, left_slotuse, 0);
         std::copy(left->slotkey + left_slotuse - shiftnum, left->slotkey + left_slotuse,
                   right->slotkey);
         std::copy(left->childid + left_slotuse - shiftnum, left->childid + left_slotuse + 1,

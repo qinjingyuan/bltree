@@ -94,6 +94,8 @@
         "hash_map": "cpp",
         "nnls": "cpp",
         "*.inc": "cpp",
-        "alignedvector3": "cpp"
+        "alignedvector3": "cpp",
+        "format": "cpp",
+        "stdfloat": "cpp"
     }
 }
