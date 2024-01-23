@@ -469,7 +469,7 @@ private:
         /// True if the node's slots are full
         inline bool isalmostfull() const
         {
-            return (node::slotuse == leafslotmax);
+            return (node::slotuse - node::slotusevalid < (leafslotmax / 8));
         }
 
         /// True if few used entries, less than half full
@@ -515,21 +515,31 @@ private:
 
 
     struct slotsite{
-        node* n;
+        const node* n;
         unsigned short site;
-        slotsite(node* nd, unsigned short v) : n(nd), site(v){}
+        slotsite(const node* nd, unsigned short v)  : n(nd), site(v) {}
+        slotsite(const node* nd, int v)  : n(nd), site(v) {}
+        // slotsite(const inner_node* nd, unsigned short v) : n(nd), site(v){}
+        // slotsite(const leaf_node* nd, unsigned short v) : n(nd), site(v){}
+
+        static size_t segsize(){
+            return (size_t)8;
+        }
+        static size_t elesize(){
+            return (size_t)6;
+        }
 
         unsigned short getsite(){
             return site;
         }
 
-        slotsite& operator ++ (){
+        slotsite& operator++(int){
             unsigned short use = n->slotuse;
             while(site < use - 1 && !(n->bs[++site])){ }
             return *this;
         }
 
-        slotsite& operator -- (){
+        slotsite& operator--(int){
             unsigned short use = n->slotuse;
             while(site > 0 && !(n->bs[--site])){ }
             return *this;
@@ -553,20 +563,38 @@ private:
             while(s > 0 && n->bs[--s]){ }
             return s;
         }
+        // 下一个空隙的元素
+        unsigned short nextele(){
+            unsigned short use = n->slotuse;
+            unsigned short s = site;
+            while(s < use && !n->bs[++s]){ }
+            return s;
+        }
+        // 上一个空隙的元素
+        unsigned short prevele(){
+            // unsigned short use = n->slotuse;
+            unsigned short s = site;
+            while(s > 0 && !n->bs[--s]){ }
+            return s;
+        }
         //  4个seg内，下一个空隙的位置
-        unsigned short nextneargap(){
+        unsigned short nextneargap(bool& isfound){
             if(!n->bs[site]) return site;
-            unsigned short max = std::min(site + 32, n->slotuse + 0);
+            unsigned short max = std::min(site + 32, (int)n->slotuse);
             unsigned short s = site;
             while(s < max && n->bs[++s] ){ }
+            if(s == leafslotmax) isfound = false;
+            else isfound = true;
             return s;
         }
         // 4个seg内，上一个空隙的位置
-        unsigned short prevneargap(){
+        unsigned short prevneargap(bool& isfound){
             if(!n->bs[site]) return site;
             unsigned short min = std::max(site - 32, 0);
             unsigned short s = site;
             while(s > min && n->bs[--s]){ }
+            if(s == min) isfound = false;
+            else isfound = true;
             return s;
         }
 
@@ -614,10 +642,10 @@ private:
 
 
         static bool isgap(size_t s){
-            return (s | 7) >= 6 && (s | 7) < 8;
+            return (s & 7) >= 6 && (s & 7) <= 7;
         }
         static bool isgap1(size_t s){
-            return (s | 7) == 7;
+            return (s & 7) == 7;
         }
 
         static double eletate(){
@@ -675,7 +703,7 @@ public:
         bool isvalid; 
     };
     
-    void regap(leaf_node * n){
+    void regap(leaf_node * n, key_type* new_key,leaf_node** new_node){
         /* 
             if select / all > 0.8
                 gap = 1
@@ -2133,8 +2161,9 @@ private:
         return second;
     }
 
-    template <typename node_type>
-    inline int find_lower_x(const node_type* n, const key_type key )
+
+    // template <typename node_type>
+    inline int find_lower_x(const inner_node* n, const key_type key )
     {
 
         if(n->model_type == modelType::GENERAL){
@@ -2145,6 +2174,130 @@ private:
         int lo = 0, hi = n->slotuse;
         int pre_target,point;
         int pt0,pt1,pt2;
+
+        std::cout << "enter " << __func__ 
+        << ", key = " << key 
+        << ", minkey = " << n->slotkey[0]  
+        << ", maxkey = " << n->slotkey[hi - 1]
+        << std::endl;  
+        print_node_info(n);
+
+
+#ifdef MUL_TIME
+auto currentTime1 = std::chrono::high_resolution_clock::now();
+#endif
+
+        // std::cout << n->fk[0] << " " << n->fk[1] << " " << n->fk[2] << " \n";
+        // std::cout << n->fb[0] << " " << n->fb[1] << " " << n->fb[2] << " \n";
+        // std::cout << pt0 << " " << pt1 << " " << pt2 << " \n";
+
+        pt0 = static_cast<int>(n->fk[0] * static_cast<double>(key) + n->fb[0]);
+
+        switch (n->model_type)
+        {
+        case modelType::LINE:
+            pre_target = pt0;
+            break;
+        
+        case modelType::S1:
+            // small big
+            pt1 = static_cast<int>(n->fk[1] * static_cast<double>(key) + n->fb[1]);
+            pt2 = static_cast<int>(n->fk[2] * static_cast<double>(key) + n->fb[2]);
+            pre_target = std::max(std::min(pt0,pt1),pt2);
+            // pre_target = getSecond(pt0,pt1,pt2);
+            break;
+        
+        case modelType::S2:
+            // small big
+            pt1 = static_cast<int>(n->fk[1] * static_cast<double>(key) + n->fb[1]);
+            pt2 = static_cast<int>(n->fk[2] * static_cast<double>(key) + n->fb[2]);
+            pre_target = std::min(std::max(pt0,pt1),pt2);
+            // pre_target = getSecond(pt0,pt1,pt2);
+            break;
+        
+        case modelType::AO:
+            pt1 = static_cast<int>(n->fk[1] * static_cast<double>(key) + n->fb[1]);
+            pre_target = std::max(pt0,pt1);
+            break;
+        
+        case modelType::TU:
+            pt1 = static_cast<int>(n->fk[1] * static_cast<double>(key) + n->fb[1]);
+            pre_target = std::min(pt0,pt1);
+            break;
+        
+        default:
+            pre_target = pt0;
+            break;
+        }
+
+        // pre_target = pt0;
+
+        point = pre_target = std::min(std::max(pre_target,lo),hi-1);
+
+#ifdef MUL_TIME
+auto currentTime2 = std::chrono::high_resolution_clock::now();
+auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+mul_times[btree_level] +=  (nanoseconds2 - nanoseconds1-21);
+mul_counts[btree_level]++;
+#endif
+
+
+#ifdef LOAD_TIME
+auto currentTime3 = std::chrono::high_resolution_clock::now();
+#endif
+
+        if(n->slotkey[point] < key){
+
+            while (point < hi && key_less(n->slotkey[point], key)) {
+                point++;
+            }
+        }else{
+            while (lo <= point && key_greaterequal(n->slotkey[point], key)) {
+                point--;
+            }
+            point++;
+        }
+        // std::cout << pre_target << " "<<point<< "\n";
+
+#ifdef LOAD_TIME
+auto currentTime4 = std::chrono::high_resolution_clock::now();
+auto nanoseconds3 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime3.time_since_epoch()).count();
+auto nanoseconds4 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime4.time_since_epoch()).count();
+load_times[btree_level] +=  (nanoseconds4 - nanoseconds3-21);
+load_counts[btree_level]++;
+#endif
+
+
+#ifdef COUNT_GAP
+int gap = abs(pre_target-point) ;
+gaps[btree_level] += gap;
+gaps_count[btree_level]++;
+#endif
+        return point;
+
+    }
+
+
+    inline int find_lower_x(const leaf_node* n, const key_type key )
+    {
+
+        if(n->model_type == modelType::GENERAL){
+            return find_lower(n, key);
+        }
+
+        if (n->slotuse == 0) return 0;
+        int lo = 0, hi = n->slotuse;
+        int pre_target,point;
+        int pt0,pt1,pt2;
+
+        std::cout << "enter " << __func__ 
+        << ", key = " << key 
+        << ", minkey = " << n->slotkey[0]  
+        << ", maxkey = " << n->slotkey[hi - 1]
+        << std::endl;  
+        print_node_info(n);
+
 
 #ifdef MUL_TIME
 auto currentTime1 = std::chrono::high_resolution_clock::now();
@@ -2203,6 +2356,8 @@ auto currentTime1 = std::chrono::high_resolution_clock::now();
             point = (point >> 3) << 3;
         }
 
+        slotsite pointslot(n, point);
+
 
 #ifdef MUL_TIME
 auto currentTime2 = std::chrono::high_resolution_clock::now();
@@ -2219,14 +2374,14 @@ auto currentTime3 = std::chrono::high_resolution_clock::now();
 
         if(n->slotkey[point] < key){
 
-            while (point < hi && n->bs[++point] && key_less(n->slotkey[point], key)) {
-                // point++;
+            while (pointslot.getsite() < hi && key_less(n->slotkey[pointslot.getsite()], key)) {
+                pointslot++;
             }
         }else{
-            while (lo <= point && n->bs[--point] && key_greaterequal(n->slotkey[point], key)) {
-                // point--;
+            while (lo <= pointslot.getsite() && key_greaterequal(n->slotkey[pointslot.getsite()], key)) {
+                pointslot--;
             }
-            point++;
+            pointslot++;
         }
         // std::cout << pre_target << " "<<point<< "\n";
 
@@ -2240,11 +2395,11 @@ load_counts[btree_level]++;
 
 
 #ifdef COUNT_GAP
-int gap = abs(pre_target-point) ;
+int gap = abs(pre_target-pointslot.getsite()) ;
 gaps[btree_level] += gap;
 gaps_count[btree_level]++;
 #endif
-        return point;
+        return pointslot.getsite();
 
     }
 
@@ -2290,6 +2445,32 @@ gaps_count[btree_level]++;
         for(int i=0;i<n->slotuse;i++){
             std::cout << n->slotkey[i] << ",";
         }
+        std::cout << "\n";
+    }
+
+    template<typename T>
+    void print_node_info(T* n){
+        int hi = n->slotuse, lo = 0;
+        if(n->isleafnode()){
+            std::cout << "leaf_node ";
+            for(int i = 0; i < hi; i++){
+                std::cout << n->slotkey[i] << ",";
+            }
+            std::cout << "\n";
+
+
+        }else{
+
+            std::cout << "inner_node ";
+            for(int i = 0; i < hi; i++){
+                std::cout << n->slotkey[i] << ",";
+            }
+            std::cout << "\n";
+
+
+
+        }
+
         std::cout << "\n";
     }
 
@@ -3503,51 +3684,56 @@ private:
             // 如果空隙位置为数据最后一个或者大于一定距离x，右侧查找失败；
             // 则向左侧查找，如果查找空隙位置为第一个或者大于距离x，则左右都查找失败，开始分裂节点
             // 成功则作出相应移动，将数据放入空隙。
-            uint16_t nextgap = tmpsite.nextneargap();
-            uint16_t prevgap = tmpsite.prevneargap();
+            bool have_next, have_prev;
+            uint16_t nextgap = tmpsite.nextneargap(have_next);
+            uint16_t prevgap = tmpsite.prevneargap(have_prev);
             uint16_t gapsite;
 
-            // 没找到空隙
-            if(leaf->bs[nextgap]){
-                if(leaf->bs[nextgap]){
-                    // 如果在附件两边都没找到空隙，则右移分配空隙，然后确定一个位置，赋值给gapsite
-                    // 如果重新分配时发现右侧也没有空隙了，则分裂节点，最后给出一个位置
-                    if (leaf->isfull() || leaf->isalmostfull())
-                    {
-                        uint16_t slotuse = leaf->slotuse;
-                        split_leaf_node(leaf, splitkey, splitnode);
-                        regap(leaf);
-                        regap(static_cast<leaf_node*>(*splitnode));
-                        retrain(leaf);
-                        retrain(static_cast<leaf_node*>(*splitnode));
+            // 找到位置直接插入，找不到位置则regap
+            if(have_next){
+                end = nextgap;
+            }
+            else if(have_prev){
+                end = prevgap;
+            }
+            else{
+                // regap 成功则插入，不成功则split后插入
+                leaf_node* new_node = NULL;
+                key_type new_key;
+                regap(leaf, &new_key, &new_node);
 
-                        // check if insert slot is in the split sibling node
-                        if (slot >= slotsite::midsite(slotuse)) {
-                            leaf = static_cast<leaf_node*>(*splitnode);
-                        }
+                // regap产生了新节点
+                if(new_node){
+                    shift_right_leaf_x(leaf, new_node, );
+                    retrain(new_node);
+                    *splitkey = new_key;
+                    *splitnode = new_node;
+                }
+                retrain(leaf);
 
-                        slot = find_lower_x(leaf, key);
-                        end = slotsite(leaf, slot).nextneargap();
-
-                    }else{
-                        regap(leaf);
-                        retrain(leaf);
-
-                        // 针对空隙分布方式来确定如何移动元素
-                        // 如果在右侧，向右移动，如果在左侧，向左侧移动。
-                        // 如果分配在中间，则移动出一个元素位置
-
-                        // 重新查找位置，重新选择下一个gap
-                        slot = find_lower_x(leaf, key);
-                        end = slotsite(leaf, slot).nextneargap();
-                    }
-
+                // 确定slot的位置
+                if(key > leaf->slotkey[leaf->slotuse-1] && new_node){
+                    leaf = new_node;
+                    slot = find_lower_x(leaf, key);
                 }else{
-                    end = prevgap;
+                    slot = find_lower_x(leaf, key);
                 }
 
-            }else{
-                end = nextgap;
+                tmpsite(leaf, slot);
+                nextgap = tmpsite.nextneargap(have_next);
+                prevgap = tmpsite.prevneargap(have_prev);
+
+                assert(have_next || have_prev);
+
+                if(have_next){
+                    end = nextgap;
+                }
+                else if(have_prev){
+                    end = prevgap;
+                }else{
+                    std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+                    exit(1);
+                }
             }
 
             // move items and put data item into correct data slot
@@ -3567,20 +3753,20 @@ private:
                                 leaf->slotdata + end);
                 bit_copy(leaf->bs, end + 1, slot + 1, end);
 
+                // 如果end是seg的最后一个元素，那么要把他向前移动
                 slotsite tmp(leaf, end);
                 uint16_t beign = end;
                 if(!leaf->bs[end - 1]){
-                    uint16_t begin = tmp.prevgap();
+                    uint16_t begin = tmp.prevele() + 1;
                     leaf->slotkey[begin] = leaf->slotkey[end];
                     leaf->slotdata[begin] = leaf->slotdata[end];
                     leaf->bs[begin] = true;
                     leaf->bs[end] = false;
                 }
-
-
             }
 
             leaf->slotkey[slot] = key;
+            leaf->bs[slot] = true;
             if (!used_as_set) leaf->slotdata[slot] = value;
 
             // 如果空闲位置是最后一个，那么slotuse需要加一
@@ -3589,6 +3775,7 @@ private:
 
             if (splitnode && leaf != *splitnode && slot == leaf->slotuse - 1)
             {
+                // 如果插入的值是节点内的最大值，那么必须更新
                 // special case: the node was split, and the insert is at the
                 // last slot of the old node. then the splitkey must be
                 // updated.
@@ -3819,7 +4006,9 @@ public:
         // calculate number of leaves needed, round up.
         // 计算需要多少个叶子节点
         size_t num_items = iend - ibegin;
-        size_t num_leaves = (num_items + leafslotmax - 1) / (leafslotmax * slotsite::eletate());
+        size_t num_seg = (num_items / slotsite::segsize()) + 1; 
+        size_t segmax = leafslotmax / slotsite::segsize();
+        size_t num_leaves = (num_seg + segmax - 1) / segmax;
 
         BTREE_PRINT("btree::bulk_load, level 0: " << m_stats.itemcount << " items into " << num_leaves << " leaves with up to " << ((iend - ibegin + num_leaves - 1) / num_leaves) << " items per leaf.");
 
@@ -3829,12 +4018,16 @@ public:
         {
             // allocate new leaf node
             leaf_node* leaf = allocate_leaf();
+            // std::cout << leaf << "\n";
 
             // copy keys or (key,value) pairs into leaf nodes, uses template
             // switch leaf->set_slot().
             uint16_t ecount = 0;
-            leaf->slotuse = static_cast<int>(num_items / (num_leaves - i));
+            size_t segcount = num_seg / (num_leaves - i);
+            leaf->slotusevalid = static_cast<int>(num_seg / (num_leaves - i) * slotsite::elesize() );
+            leaf->slotuse = static_cast<int>(num_seg / (num_leaves - i) * slotsite::segsize() - 2);
             for (size_t s = 0; s < leaf->slotuse; ++s){
+                // std::cout << slotsite::isgap(s) << ":" << s << " ";
                 if(!slotsite::isgap(s)){
                     leaf->set_slot(s, *it);
                     leaf->bs[s] = true;
@@ -3842,6 +4035,7 @@ public:
                     ++ecount;
                 }
             }
+            // std::cout << "\n";
 
 
             if (m_tailleaf != NULL) {
@@ -3854,11 +4048,12 @@ public:
             m_tailleaf = leaf;
 
             num_items -= ecount;
+            num_seg -= segcount;
             retrain(leaf);
+        // std::cout << "competed 0 level\n";
         }
 
         BTREE_ASSERT(it == iend && num_items == 0);
-
         // if the btree is so small to fit into one leaf, then we're done.
         if (m_headleaf == m_tailleaf) {
             m_root = m_headleaf;
