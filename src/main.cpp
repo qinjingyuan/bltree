@@ -167,6 +167,51 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
 
     auto res = bt.find_x(426637128);
 
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    // split
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    bt.insert_x(426637129, 426637129);
+    // split again
     bt.insert_x(426637128, 426637128);
     bt.insert_x(426637128, 426637128);
     bt.insert_x(426637128, 426637128);
@@ -185,9 +230,21 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
     bt.insert_x(426637128, 426637128);
     bt.insert_x(426637128, 426637128);
     bt.insert_x(426637128, 426637128);
-    // bt.insert_x(426637128, 426637128);
+    bt.insert_x(426637128, 426637128);
+    bt.insert_x(426637128, 426637128);
+    bt.insert_x(426637128, 426637128);
+    bt.insert_x(426637128, 426637128);
+    bt.insert_x(426637128, 426637128);
+    bt.insert_x(426637128, 426637128);
+    bt.insert_x(426637128, 426637128);
+    bt.insert_x(426637128, 426637128);
+    bt.insert_x(426637128, 426637128);
+    bt.insert_x(426637128, 426637128);
+    bt.insert_x(426637128, 426637128);
+    bt.insert_x(426637128, 426637128);
 
-    auto res1 = bt.find_x(426637128);
+
+    // auto res1 = bt.find_x(426637129);
 
     // if(res){
     //     // std::cout << data[randomInt].first << std::endl;

@@ -516,8 +516,7 @@ private:
 
     struct slotsite{
         const node* n;
-        unsigned short site;
-        slotsite(const node* nd, unsigned short v)  : n(nd), site(v) {}
+        int site;
         slotsite(const node* nd, int v)  : n(nd), site(v) {}
         // slotsite(const inner_node* nd, unsigned short v) : n(nd), site(v){}
         // slotsite(const leaf_node* nd, unsigned short v) : n(nd), site(v){}
@@ -529,18 +528,18 @@ private:
             return (size_t)6;
         }
 
-        unsigned short getsite(){
+        int getsite(){
             return site;
         }
 
         slotsite& operator++(int){
             unsigned short use = n->slotuse;
-            while(site < use - 1 && !(n->bs[++site])){ }
+            while(site < use && !(n->bs[++site])){ }
             return *this;
         }
 
         slotsite& operator--(int){
-            unsigned short use = n->slotuse;
+            if(site == 0) site--;
             while(site > 0 && !(n->bs[--site])){ }
             return *this;
         }
@@ -580,10 +579,11 @@ private:
         //  4个seg内，下一个空隙的位置
         unsigned short nextneargap(bool& isfound){
             if(!n->bs[site]) return site;
-            unsigned short max = std::min(site + 32, (int)n->slotuse);
-            unsigned short s = site;
+            int max = std::min(site + 32, (int)n->slotuse);
+            int s = site;
             while(s < max && n->bs[++s] ){ }
-            if(s == leafslotmax) isfound = false;
+            if(s == max) isfound = false;
+            else if (s == leafslotmax) isfound = false;
             else isfound = true;
             return s;
         }
@@ -647,6 +647,9 @@ private:
         static bool isgap1(size_t s){
             return (s & 7) == 7;
         }
+        static bool issolid(int s, int solid){
+            return (s & 7) < solid;
+        }
 
         static double eletate(){
             return 0.75;
@@ -698,8 +701,8 @@ public:
 
     struct  leaf_ele
     {
-        key_type k;
-        data_type d;
+        key_type key;
+        data_type value;
         bool isvalid; 
     };
     
@@ -724,121 +727,92 @@ public:
         size_t maxins = n->max_insert_count;
         size_t all = ins + del + sel;
         size_t allchange = ins + del;
-        uint16_t gap = 0;
+        // uint16_t gap = 0;
+        uint16_t solid;
 
 
+        if(sel / (all + 0.1) > 0.8){
+            solid = 7;
+        } else{
+            if(maxins / (ins + 0.1) > 0.9){
+                solid = 7;
+            }else{
+                solid = static_cast<uint16_t>(((ins + 0.1) / (allchange + 0.1)) * 4 + 4);
+            }
+        }
 
-        // if(sel / all > 0.8){
-        //     gap = 1;
-        // } else{
-        //     if(maxins / ins > 0.9){
-        //         gap = 1;
-        //     }else{
-        //         gap = static_cast<uint16_t>((del / allchange) * 4 + 4);
-        //     }
-        // }
+        solid = 5;
 
-
-        // if(gap == 1){
-        //     int placed = 0;
-        //     std::deque<leaf_ele> tmpqueue;
-        //     for(int i = 0; i < n->slotuse; i++){
-        //         if(n->bs[i]){
-        //             if(placed < i){
-        //                 // 不是空隙时，进行装填
-        //                 if(!slotsite::isgap1(placed)){
-        //                     if(tmpqueue.size() != 0){
-        //                         leaf_ele t = {n->slotkey[i], n->slotdata[i], n->bs[i]};
-        //                         tmpqueue.push_back(t);
-
-        //                         leaf_ele d = tmpqueue.front();
-        //                         n->slotkey[placed] = d.k;
-        //                         n->slotdata[placed] = d.d;
-        //                         n->bs[placed] = d.isvalid;
-        //                         tmpqueue.pop_front();
-
-        //                     }
-        //                     else{
-        //                         n->slotkey[placed] = n->slotkey[i];
-        //                         n->slotdata[placed] = n->slotdata[i];
-        //                         n->bs[placed] = n->bs[i];
-
-        //                     }
-
-        //                 }
-        //                 ++placed;
-
-        //             }
-        //             else{
-        //                 leaf_ele t = {n->slotkey[i], n->slotdata[i], n->bs[i]};
-        //                 tmpqueue.push_back(t);
-
-        //             }
-        //         }
-        //     }
-
-        //     if(tmpqueue.size() != 0){
-                
-        //     }
-
-        // }
-
-
-        int placed = 0;
-        std::deque<leaf_ele> tmpqueue;
+        // 将待regap数组装在一个单向队列里
+        std::queue<leaf_ele> dq;
         for(int i = 0; i < n->slotuse; i++){
             if(n->bs[i]){
-                if(placed < i){
-                    // 不是空隙时，进行装填
-                    if(!slotsite::isgap(placed)){
-                        if(tmpqueue.size() != 0){
-                            leaf_ele t = {n->slotkey[i], n->slotdata[i], n->bs[i]};
-                            tmpqueue.push_back(t);
+                dq.push(leaf_ele{n->slotkey[i], n->slotdata[i], true});
+            }
+        }
 
-                            leaf_ele d = tmpqueue.front();
-                            n->slotkey[placed] = d.k;
-                            n->slotdata[placed] = d.d;
-                            n->bs[placed] = d.isvalid;
-                            tmpqueue.pop_front();
+        // 将队列中的元素安装gap大小重新分配，并记录分配一半元素时的位置
+        n->bs.reset();
+        int half_count = (dq.size() / 2);
+        int valid_count = 0, half_s = 0,left_num = 0, left_use = 0;
+        for(int i = 0; i < leafslotmax; i++){
+            if(dq.size() == 0){
+                left_use = i;
+                break;
+            }
 
-                        }
-                        else{
-                            n->slotkey[placed] = n->slotkey[i];
-                            n->slotdata[placed] = n->slotdata[i];
-                            n->bs[placed] = n->bs[i];
+            if(slotsite::issolid(i, solid)){
+                leaf_ele e = dq.front();
+                dq.pop();
+                n->slotkey[i] = e.value;
+                n->slotdata[i] = e.value;
+                n->bs[i] = true;
+                ++valid_count;
 
-                        }
-
-                    }
-                    ++placed;
-
-                }
-                else{
-                    leaf_ele t = {n->slotkey[i], n->slotdata[i], n->bs[i]};
-                    tmpqueue.push_back(t);
-
+                if(half_count == valid_count){
+                    half_s = (i | 7) + 1;
+                    left_num = valid_count - ((i | 7) + 1)  + solid; 
                 }
             }
         }
 
-        if(tmpqueue.size() != 0){
-            for(; placed < n->slotuse; placed++){
-                if(!slotsite::isgap(placed)){
-                    if(tmpqueue.size() != 0){
+        // 如果regap一个节点没装装完，将中间位置后的元素拷贝到新节点，然后继续在新节点分配
+        if(dq.size() != 0 && half_s != 0){
+            leaf_node* newleaf = allocate_leaf();
+            std::copy(n->slotkey + half_s, n->slotkey + leafslotmax, newleaf->slotkey);
+            data_copy(n->slotdata + half_s, n->slotdata + leafslotmax, newleaf->slotdata);
+            bit2_copy(n->bs, half_s, leafslotmax, newleaf->bs, 0);
+            bit_set(n->bs, half_s, leafslotmax, false);
 
-                        leaf_ele d = tmpqueue.front();
-                        n->slotkey[placed] = d.k;
-                        n->slotdata[placed] = d.d;
-                        n->bs[placed] = d.isvalid;
-                        tmpqueue.pop_front();
+            n->slotuse = half_s - 8 + solid;
+            valid_count = n->slotusevalid - left_num;
+            n->slotusevalid = left_num;
 
-                    }
-
-
+            int right_use = leafslotmax - half_s;
+            for(int i = right_use; i < leafslotmax; i++){
+                if(dq.size() == 0){
+                    right_use = i;
+                    break;
+                }
+                if(slotsite::issolid(i, solid)){
+                    leaf_ele e = dq.front();
+                    dq.pop();
+                    newleaf->slotkey[i] = e.value;
+                    newleaf->slotdata[i] = e.value;
+                    newleaf->bs[i] = true;
+                    // ++valid_count;
                 }
             }
-        }
 
+            newleaf->slotuse = right_use;
+            newleaf->slotusevalid = valid_count;
+
+            *new_key = n->slotkey[n->slotuse-1];
+            *new_node = newleaf;
+        }else{
+            n->slotuse = left_use;
+            n->slotusevalid = valid_count;
+        }
 
     }
 
@@ -1935,9 +1909,19 @@ private:
     }
 
 
+    void bit_set(std::bitset<leafslotmax+1>& bs, int first, int last, bool b){
+        for(; first < last; first++, first++){
+            bs[first] = b;
+        }
+    }
     void bit_copy(std::bitset<leafslotmax+1>& bs, int first, int last, int result){
         for(; first < last; first++, result++){
             bs[result] = bs[first];
+        }
+    }
+    void bit2_copy(std::bitset<leafslotmax+1>& bs, int first, int last,std::bitset<leafslotmax+1>& bs2 , int result){
+        for(; first < last; first++, result++){
+            bs2[result] = bs[first];
         }
     }
     void bit_copy_backward(std::bitset<leafslotmax+1>& bs, int first, int last, int result){
@@ -2379,11 +2363,11 @@ auto currentTime3 = std::chrono::high_resolution_clock::now();
             }
         }else{
             while (lo <= pointslot.getsite() && key_greaterequal(n->slotkey[pointslot.getsite()], key)) {
+        // std::cout << __LINE__ <<"\n";
                 pointslot--;
             }
             pointslot++;
         }
-        // std::cout << pre_target << " "<<point<< "\n";
 
 #ifdef LOAD_TIME
 auto currentTime4 = std::chrono::high_resolution_clock::now();
@@ -2452,18 +2436,26 @@ gaps_count[btree_level]++;
     void print_node_info(T* n){
         int hi = n->slotuse, lo = 0;
         if(n->isleafnode()){
-            std::cout << "leaf_node ";
+            std::cout << n << " leaf_node \n";
+
             for(int i = 0; i < hi; i++){
-                std::cout << n->slotkey[i] << ",";
+                if(n->bs[i]) std::cout << n->slotkey[i] << ","; else std::cout << 0 << ",";
+                std::cout << n->bs[i] << "|";
+                if((i & 7 )== 7) std::cout << "\t";
+                if((i & 15 )== 15) std::cout << "\n";
             }
             std::cout << "\n";
 
 
         }else{
 
-            std::cout << "inner_node ";
+            std::cout << n << " inner_node \n";
+
             for(int i = 0; i < hi; i++){
                 std::cout << n->slotkey[i] << ",";
+                std::cout << n->bs[i] << "|";
+                if((i & 7) == 7) std::cout << "\t";
+                if((i & 15) == 15) std::cout << "\n";
             }
             std::cout << "\n";
 
@@ -3692,34 +3684,44 @@ private:
             // 找到位置直接插入，找不到位置则regap
             if(have_next){
                 end = nextgap;
+                std::cout << "end = nextgap;\n";
             }
             else if(have_prev){
                 end = prevgap;
+                std::cout << "end = prevgap;\n";
             }
             else{
                 // regap 成功则插入，不成功则split后插入
                 leaf_node* new_node = NULL;
                 key_type new_key;
                 regap(leaf, &new_key, &new_node);
+                std::cout << "new_key = " << new_key << " new_node = " << new_node << std::endl;
 
                 // regap产生了新节点
                 if(new_node){
-                    shift_right_leaf_x(leaf, new_node, );
+                    // shift_right_leaf_x(leaf, new_node, );
                     retrain(new_node);
                     *splitkey = new_key;
                     *splitnode = new_node;
                 }
                 retrain(leaf);
 
+                // if(new_node){
+                //     print_node_info(leaf);
+                //     print_node_info(new_node);
+                // }
+
                 // 确定slot的位置
                 if(key > leaf->slotkey[leaf->slotuse-1] && new_node){
+                    // find_lower_x(leaf, key);
                     leaf = new_node;
                     slot = find_lower_x(leaf, key);
                 }else{
+                    // find_lower_x(new_node, key);
                     slot = find_lower_x(leaf, key);
                 }
 
-                tmpsite(leaf, slot);
+                tmpsite = {leaf, slot};
                 nextgap = tmpsite.nextneargap(have_next);
                 prevgap = tmpsite.prevneargap(have_prev);
 
