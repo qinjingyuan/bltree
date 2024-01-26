@@ -513,7 +513,7 @@ private:
         }
     };
 
-    int segsize = 8;
+    const static int segsize = 8;
 
     struct slotsite{
         const node* n;
@@ -549,14 +549,14 @@ private:
             return (site == x.site && n ==  x.n);
         }
 
-        // 下一个空隙的位置
+        // 本节点中，下一个空隙的位置
         unsigned short nextgap(){
             unsigned short use = n->slotuse;
             unsigned short s = site;
             while(s < use && n->bs[++s]){ }
             return s;
         }
-        // 上一个空隙的位置
+        // 本节点中，上一个空隙的位置
         unsigned short prevgap(){
             // unsigned short use = n->slotuse;
             unsigned short s = site;
@@ -564,20 +564,21 @@ private:
             return s;
         }
 
-        // 下一个空隙的元素
+        // 本节点中，下一个元素的元素
         unsigned short nextele(){
             unsigned short use = n->slotuse;
             unsigned short s = site;
             while(s < use && !n->bs[++s]){ }
             return s;
         }
-        // 上一个空隙的元素
+        // 本节点中，上一个元素的元素
         unsigned short prevele(){
             // unsigned short use = n->slotuse;
             unsigned short s = site;
             while(s > 0 && !n->bs[--s]){ }
             return s;
         }
+
         //  4个seg内，下一个空隙的位置
         unsigned short nextneargap(bool& isfound){
             if(!n->bs[site]) return site;
@@ -615,34 +616,31 @@ private:
             return s;
         }
 
-        // // 下一个seg中下一个空隙，如果超过seg，则返回下一个seg的第一个位置
-        // int nextgapcurseg(){
-        //     int max = (site | (segsize - 1)) + 1;
-        //     int s = site;
-        //     while(s < max && n->bs[++s]){ }
-        //     return s;
-        // }
-        // // 下一个seg中下一个元素，如果超过seg，则返回下一个seg的第一个位置
-        // int nextelecurseg(){
-        //     int max = (site | (segsize - 1)) + 1;
-        //     int s = site;
-        //     while(s < max && !n->bs[++s]){ }
-        //     return s;
-        // }
+        // 本seg中下一个空隙，如果超过seg，则返回下一个seg的第一个位置
+        static int nextgapcurseg(node* n, int site){
+            int max = (site | (segsize - 1)) + 1;
+            int s = site;
+            while(s < max && n->bs[++s]){ }
+            return s;
+        }
+        // 本seg中下一个元素，如果超过seg，则返回下一个seg的第一个位置
+        static int nextelecurseg(node* n, int site){
+            int max = (site | (segsize - 1)) + 1;
+            int s = site;
+            while(s < max && !n->bs[++s]){ }
+            return s;
+        }
 
-
-
-
-        // // 本seg中上一个空隙，如果超过seg，则返回本seg的第一个位置
-        // unsigned short prevgapfrag(){
-        //     unsigned short min = (site | 7) - 7;
-        //     unsigned short s = site;
-        //     while(s > min && n->bs[--s]){ }
-        //     return s;
-        // }
-
-
-
+        // 返回范围内元素的数量
+        static int rangeelenum(const node * n, int start, int end){
+            int num = 0;
+            for(; start < end; start++){
+                if(n->bs[start] == true){
+                    num++;
+                }
+            }
+            return num;
+        }
 
         int currseg(){
             return (site | (segsize - 1)) - segsize + 1; 
@@ -662,8 +660,8 @@ private:
             return (site & 7) + 1 == 8; 
         }
 
-        static unsigned short lastfrag(unsigned short x){
-            return (x | 7) + 1;
+        static int nextseg(int x){
+            return (x | (segsize - 1)) + 1;
         }
 
         static unsigned short midsite(uint16_t slotuse){
@@ -3741,7 +3739,6 @@ private:
 
                 // regap产生了新节点
                 if(new_node){
-                    // shift_right_leaf_x(leaf, new_node, );
                     retrain(new_node);
                     *splitkey = new_key;
                     *splitnode = new_node;
@@ -4763,7 +4760,9 @@ private:
 
 
             result_t myres = result_t(btree_ok);
-
+            
+            // 检查左右节点元素数量，确定是否合并和平均
+            // 如果删除的是最后一个，更新上一层的key
             // if the last key of the leaf was changed, the parent is notified
             // and updates the key of this leaf
             if (slot == leaf->slotuse)
@@ -4787,11 +4786,11 @@ private:
                 }
             }
 
-            // check gap nums
-            if(leaf->slotuse - leaf->slotusevalid > static_cast<unsigned short>(0.4 * leaf->slotuse)){
-                regap(leaf);
-                retrain(leaf);
-            }
+            // // check gap nums
+            // if(leaf->slotuse - leaf->slotusevalid > static_cast<unsigned short>(0.4 * leaf->slotuse)){
+            //     regap(leaf);
+            //     retrain(leaf);
+            // }
 
             if (leaf->isunderflow() && !(leaf == m_root && leaf->slotuse >= 1))
             {
@@ -5367,22 +5366,24 @@ private:
         BTREE_ASSERT(left->isleafnode() && right->isleafnode());
         BTREE_ASSERT(parent->level == 1);
 
-        unsigned short left_slotuse = slotsite::lastfrag(left->slotuse);
-        unsigned short right_slotuse = slotsite::lastfrag(right->slotuse);
+        int left_slotuse =  slotsite::nextseg(left->slotuse);
+        int right_slotuse = slotsite::nextseg(right->slotuse);
 
-        BTREE_ASSERT(left_slotuse + right_slotuse < leafslotmax);
+        BTREE_ASSERT(left_slotuse + right_slotuse <= leafslotmax);
 
         // 将右节点的数据拷贝到左节点
-        std::copy(right->slotkey, right->slotkey + right_slotuse,
-                  left->slotkey + left_slotuse);
-        data_copy(right->slotdata, right->slotdata + right_slotuse,
-                  left->slotdata + left_slotuse);
-        bit_copy(right->bs, 0 , right_slotuse,  left_slotuse);
+        std::copy(right->slotkey, right->slotkey + right_slotuse, left->slotkey + left_slotuse);
+        data_copy(right->slotdata, right->slotdata + right_slotuse, left->slotdata + left_slotuse);
+        bit2_copy(right->bs, 0 , right_slotuse, left->bs, left_slotuse);
 
-        left->slotuse += right_slotuse;
+        left->slotuse = left_slotuse + right->slotuse;
+        assert(left_slotuse + right->slotuse >= 0);
+
         left->slotusevalid += right->slotusevalid;
 
         left->nextleaf = right->nextleaf;
+        // 如果right是最后一个节点，设置left = taill
+        // 否则设置right的下一个的prevleaf = left
         if (left->nextleaf)
             left->nextleaf->prevleaf = left;
         else
@@ -5547,50 +5548,33 @@ private:
         BTREE_ASSERT(left->slotuse < right->slotuse);
         BTREE_ASSERT(parent->childid[parentslot] == left);
 
-        unsigned short left_slotuse = (left->slotuse | (unsigned short)7) + 1;
-        unsigned short right_slotuse = (right->slotuse | (unsigned short)7) + 1;
+        int left_slotuse =  slotsite::nextseg(left->slotuse);
+        int right_slotuse = slotsite::nextseg(right->slotuse);
 
-        unsigned int shiftnum = (((right_slotuse - left_slotuse) >> 1) | (unsigned short)7)+1;
+        int shiftnum = slotsite::nextseg((right_slotuse - left_slotuse) >> 1);
 
         BTREE_PRINT("Shifting (leaf) " << shiftnum << " entries to left " << left << " from right " << right << " with common parent " << parent << ".");
 
-        BTREE_ASSERT(left_slotuse + shiftnum < leafslotmax);
+        BTREE_ASSERT(left_slotuse + shiftnum <= leafslotmax);
 
         // copy the first items from the right node to the last slot in the left node.
 
-        std::copy(right->slotkey, right->slotkey + shiftnum,
-                  left->slotkey + left_slotuse);
-        data_copy(right->slotdata, right->slotdata + shiftnum,
-                  left->slotdata + left_slotuse);
-        bit_copy(right->bs, 0, shiftnum,  left_slotuse);
+        std::copy(right->slotkey, right->slotkey + shiftnum, left->slotkey + left_slotuse);
+        data_copy(right->slotdata, right->slotdata + shiftnum, left->slotdata + left_slotuse);
+        bit2_copy(right->bs, 0, shiftnum, left->bs, left_slotuse);
 
-        unsigned short last_gap_num = 0;
-        while(!left->bs[left_slotuse + shiftnum - last_gap_num - 1]){
-            last_gap_num++;
-        }
-
-        left->slotuse += (shiftnum - last_gap_num);
-
-        // compute valid ele nums
-        unsigned short valid_nums = 0;
-        for(unsigned int i = 0; i < shiftnum; i++){
-            if(right->bs[i]){
-                valid_nums++;
-            }
-        }
-
-        left->slotusevalid += valid_nums;
+        left->slotuse = slotsite::nextgapcurseg(left, left_slotuse + shiftnum - segsize);
+        int move_left_valid_num = slotsite::rangeelenum(right, 0, shiftnum);
+        left->slotusevalid += move_left_valid_num;
 
         // shift all slots in the right node to the left
 
-        std::copy(right->slotkey + shiftnum, right->slotkey + right->slotuse,
-                  right->slotkey);
-        data_copy(right->slotdata + shiftnum, right->slotdata + right->slotuse,
-                  right->slotdata);
+        std::copy(right->slotkey + shiftnum, right->slotkey + right->slotuse, right->slotkey);
+        data_copy(right->slotdata + shiftnum, right->slotdata + right->slotuse, right->slotdata);
         bit_copy(right->bs, shiftnum, right->slotuse, 0);
 
         right->slotuse -= shiftnum;
-        right->slotusevalid -= valid_nums;
+        right->slotusevalid -= move_left_valid_num;
 
         // fixup parent
         if (parentslot < parent->slotuse) {
@@ -5802,12 +5786,14 @@ private:
 
         BTREE_ASSERT(left->slotuse > right->slotuse);
 
-        unsigned short left_slotuse = slotsite::lastfrag(left->slotuse);
-        unsigned short right_slotuse = slotsite::lastfrag(right->slotuse);
+        int left_slotuse =  slotsite::nextseg(left->slotuse);
+        int right_slotuse = slotsite::nextseg(right->slotuse);
 
-        unsigned int shiftnum = slotsite::lastfrag((right_slotuse - left_slotuse) >> 1);
+        int shiftnum = slotsite::nextseg((right_slotuse - left_slotuse) >> 1);
 
         BTREE_PRINT("Shifting (leaf) " << shiftnum << " entries to right " << right << " from left " << left << " with common parent " << parent << ".");
+
+        BTREE_ASSERT(right_slotuse + shiftnum <= leafslotmax);
 
         if (selfverify)
         {
@@ -5825,39 +5811,23 @@ private:
 
         // shift all slots in the right node
 
-        BTREE_ASSERT(right_slotuse + shiftnum < leafslotmax);
 
-        std::copy_backward(right->slotkey, right->slotkey + right_slotuse,
-                           right->slotkey + right_slotuse + shiftnum);
-        data_copy_backward(right->slotdata, right->slotdata + right_slotuse,
-                           right->slotdata + right_slotuse + shiftnum);
+        std::copy_backward(right->slotkey, right->slotkey + right_slotuse, right->slotkey + right_slotuse + shiftnum);
+        data_copy_backward(right->slotdata, right->slotdata + right_slotuse, right->slotdata + right_slotuse + shiftnum);
         bit_copy_backward(right->bs, 0, right_slotuse, right_slotuse + shiftnum);
 
         right->slotuse += shiftnum;
-        // compute valid ele nums
-        unsigned short valid_nums = 0;
-        for(unsigned int i = 0; i < shiftnum; i++){
-            if(left->bs[i]){
-                valid_nums++;
-            }
-        }
-        right->slotusevalid += valid_nums;
+        int move_left_valid_num = slotsite::rangeelenum(left, left_slotuse - shiftnum, left_slotuse);
+        right->slotusevalid += move_left_valid_num;
+
 
         // copy the last items from the left node to the first slot in the right node.
-        std::copy(left->slotkey + left_slotuse - shiftnum, left->slotkey + left_slotuse,
-                  right->slotkey);
-        data_copy(left->slotdata + left_slotuse - shiftnum, left->slotdata + left_slotuse,
-                  right->slotdata);
-        bit_copy(left->bs, left_slotuse - shiftnum, left_slotuse, 0);
+        std::copy(left->slotkey + left_slotuse - shiftnum, left->slotkey + left_slotuse, right->slotkey);
+        data_copy(left->slotdata + left_slotuse - shiftnum, left->slotdata + left_slotuse, right->slotdata);
+        bit2_copy(left->bs, left_slotuse - shiftnum, left_slotuse, right->bs, 0);
 
-
-        unsigned short last_gap_num = 0;
-        while(!left->bs[left_slotuse - shiftnum - last_gap_num - 1]){
-            last_gap_num++;
-        }
-
-        left->slotuse -= (shiftnum + last_gap_num);
-        left->slotusevalid -= valid_nums;
+        left->slotuse = slotsite::nextgapcurseg(left, left_slotuse - shiftnum - segsize);
+        left->slotusevalid -= move_left_valid_num;
 
         parent->slotkey[parentslot] = left->slotkey[left->slotuse - 1];
     }
