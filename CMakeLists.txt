@@ -13,7 +13,7 @@ add_executable(btree_opt src/main.cpp)
 #     set(CMAKE_CXX_FLAGS "-O3 -xHost")
 # else()
 #     # clang and gcc
-#     set(CMAKE_CXX_FLAGS "-O1 -march=native -Wextra")
+#     set(CMAKE_CXX_FLAGS "-O2 -march=native -Wextra")
 #     # set(CMAKE_CXX_FLAGS "-O1 -march=native -Wall -Wextra")
 # endif()
 
@@ -30,7 +30,7 @@ add_definitions( -ggdb)
 # add_definitions( -DTIMING )
 add_definitions( -lrt -lpthread -lm )
 # add_definitions( -O0 -Wall -fno-stack-protector  )
-add_definitions( -flto -fno-stack-protector -Wno-unknown-pragmas  -rdynamic -O1 -g  -Wextra -march=native  -Wextra -Wshadow  )
+add_definitions( -flto -fno-stack-protector -Wno-unknown-pragmas  -rdynamic -O2 -g  -Wextra -march=native  -Wextra -Wshadow  )
 # add_definitions(-DMYDEBUG)
 # add_definitions(-DX3COUNT_TIME)
 # add_definitions(-DLINECOUNT_TIME)
@@ -42,7 +42,7 @@ add_definitions( -flto -fno-stack-protector -Wno-unknown-pragmas  -rdynamic -O1 
 # add_definitions(-DLOAD_TIME)
 # add_definitions(-DCOUNT_GAP)
 
-
+# add_definitions(-DGAP_TEST)
 
 
 

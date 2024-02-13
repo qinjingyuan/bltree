@@ -580,25 +580,27 @@ private:
         }
 
         //  4个seg内，下一个空隙的位置
-        unsigned short nextneargap(bool& isfound){
+        bool nextneargap(int& s){
+            s = site;
             if(!n->bs[site]) return site;
             int max = std::min(site + 32, (int)n->slotuse);
-            int s = site;
             while(s < max && n->bs[++s] ){ }
-            if(s == max) isfound = false;
-            else if (s == leafslotmax) isfound = false;
-            else isfound = true;
-            return s;
+#ifdef GAP_TEST
+            std::cout << "s = " << s << "\n";
+#endif
+            if(s == (int)n->slotuse && s < leafslotmax) return true;
+            else if (s == max) return false;
+            else if (s == leafslotmax) return false;
+            else return true;
         }
         // 4个seg内，上一个空隙的位置
-        unsigned short prevneargap(bool& isfound){
+        bool prevneargap(int& s){
+            s = site;
             if(!n->bs[site]) return site;
-            unsigned short min = std::max(site - 32, 0);
-            unsigned short s = site;
+            int min = std::max(site - 32, 0);
             while(s > min && n->bs[--s]){ }
-            if(s == min) isfound = false;
-            else isfound = true;
-            return s;
+            if(s == min) return false;
+            else return true;
         }
 
         // 本seg中下一个空隙，如果超过seg，则返回下一个seg的第一个位置
@@ -768,6 +770,7 @@ public:
         size_t allchange = ins + del;
         // uint16_t gap = 0;
         uint16_t solid;
+        // std::cout << "ins del sel " << ins << " " << del << " " << sel << "\n";
 
 
         if(sel / (all + 0.1) > 0.8){
@@ -776,11 +779,11 @@ public:
             if(maxins / (ins + 0.1) > 0.9){
                 solid = 7;
             }else{
-                solid = static_cast<uint16_t>(((ins + 0.1) / (allchange + 0.1)) * 4 + 4);
+                solid = static_cast<uint16_t>(((del + 0.1) / (allchange + 0.1)) * 2 + 6);
             }
         }
 
-        solid = 5;
+        // solid = 5;
 
         // 将待regap数组装在一个单向队列里
         std::queue<leaf_ele> dq;
@@ -789,11 +792,14 @@ public:
                 dq.push(leaf_ele{n->slotkey[i], n->slotdata[i], true});
             }
         }
-        n->slotusevalid = dq.size();
+        int slotusevalid = dq.size();
 
         // 将队列中的元素安装gap大小重新分配，并记录分配一半元素时的位置
         n->bs.reset();
-        int half_count = (dq.size() / 2);
+        int source_slotuse = n->slotuse;
+        int source_slotusecalid = dq.size();
+        int half_count = (dq.size() / solid / 2 * segsize);
+        // int half_slotuse = half_count / segsize * solid;
         int valid_count = 0, half_s = 0,left_num = 0, left_use = 0;
         for(int i = 0; i < leafslotmax; i++){
             if(dq.size() == 0){
@@ -809,31 +815,27 @@ public:
                 n->bs[i] = true;
                 ++valid_count;
 
-                if(half_count == valid_count){
-                    half_s = (i | (segsize - 1)) + 1;
-                    left_num = valid_count - ((i | (segsize - 1)) + 1)  + solid; 
-                }
             }
         }
 
         // 如果regap一个节点没装装完，将中间位置后的元素拷贝到新节点，然后继续在新节点分配
-        if(dq.size() != 0 && half_s != 0){
+        if(dq.size() != 0){
             leaf_node* newleaf = allocate_leaf();
-            std::copy(n->slotkey + half_s, n->slotkey + leafslotmax, newleaf->slotkey);
-            data_copy(n->slotdata + half_s, n->slotdata + leafslotmax, newleaf->slotdata);
-            bit2_copy(n->bs, half_s, leafslotmax, newleaf->bs, 0);
-            bit_set(n->bs, half_s, leafslotmax, false);
+            std::copy(n->slotkey + half_count, n->slotkey + leafslotmax, newleaf->slotkey);
+            data_copy(n->slotdata + half_count, n->slotdata + leafslotmax, newleaf->slotdata);
+            bit2_copy(n->bs, half_count, leafslotmax, newleaf->bs, 0);
+            bit_set(n->bs, half_count, leafslotmax, false);
 
-            n->slotuse = half_s - segsize + solid;
-            valid_count = n->slotusevalid - left_num;
-            n->slotusevalid = left_num;
+            n->slotuse = half_count - segsize + solid;
+            n->slotusevalid = half_count / segsize * solid;
 
-            int right_use = leafslotmax - half_s;
+            int right_use = leafslotmax - half_count;
             for(int i = right_use; i < leafslotmax; i++){
                 if(dq.size() == 0){
                     right_use = i;
                     break;
                 }
+
                 if(slotsite::issolid(i, solid)){
                     leaf_ele e = dq.front();
                     dq.pop();
@@ -845,7 +847,7 @@ public:
             }
 
             newleaf->slotuse = right_use;
-            newleaf->slotusevalid = valid_count;
+            newleaf->slotusevalid = slotusevalid - n->slotusevalid;
 
             *new_key = n->slotkey[n->slotuse-1];
             *new_node = newleaf;
@@ -1949,22 +1951,22 @@ private:
     }
 
 
-    void bit_set(std::bitset<leafslotmax+1>& bs, int first, int last, bool b){
-        for(; first < last; first++, first++){
+    static void bit_set(std::bitset<leafslotmax+1>& bs, int first, int last, bool b){
+        for(; first < last; first++){
             bs[first] = b;
         }
     }
-    void bit_copy(std::bitset<leafslotmax+1>& bs, int first, int last, int result){
+    static void bit_copy(std::bitset<leafslotmax+1>& bs, int first, int last, int result){
         for(; first < last; first++, result++){
             bs[result] = bs[first];
         }
     }
-    void bit2_copy(std::bitset<leafslotmax+1>& bs, int first, int last,std::bitset<leafslotmax+1>& bs2 , int result){
+    static void bit2_copy(std::bitset<leafslotmax+1>& bs, int first, int last,std::bitset<leafslotmax+1>& bs2 , int result){
         for(; first < last; first++, result++){
             bs2[result] = bs[first];
         }
     }
-    void bit_copy_backward(std::bitset<leafslotmax+1>& bs, int first, int last, int result){
+    static void bit_copy_backward(std::bitset<leafslotmax+1>& bs, int first, int last, int result){
         for(; first < last; last--, result--){
             bs[result-1] = bs[last-1];
         }
@@ -2198,14 +2200,14 @@ private:
         int lo = 0, hi = n->slotuse;
         int pre_target,point;
         int pt0,pt1,pt2;
-
+#ifdef GAP_TEST
         std::cout << "enter " << __func__ 
         << ", key = " << key 
         << ", minkey = " << n->slotkey[0]  
         << ", maxkey = " << n->slotkey[hi - 1]
         << std::endl;  
         print_node_info(n);
-
+#endif
 
 #ifdef MUL_TIME
 auto currentTime1 = std::chrono::high_resolution_clock::now();
@@ -2314,14 +2316,14 @@ gaps_count[btree_level]++;
         int lo = 0, hi = n->slotuse;
         int pre_target,point;
         int pt0,pt1,pt2;
-
+#ifdef GAP_TEST
         std::cout << "enter " << __func__ 
         << ", key = " << key 
         << ", minkey = " << n->slotkey[0]  
         << ", maxkey = " << n->slotkey[hi - 1]
         << std::endl;  
         print_node_info(n);
-
+#endif
 
 #ifdef MUL_TIME
 auto currentTime1 = std::chrono::high_resolution_clock::now();
@@ -2380,7 +2382,7 @@ auto currentTime1 = std::chrono::high_resolution_clock::now();
             point = (point >> 3) << 3;
         }
 
-        slotsite pointslot(n, point);
+        // slotsite pointslot(n, point);
 
 
 #ifdef MUL_TIME
@@ -2396,18 +2398,45 @@ mul_counts[btree_level]++;
 auto currentTime3 = std::chrono::high_resolution_clock::now();
 #endif
 
+        // if(n->slotkey[point] < key){
+
+        //     while (pointslot.getsite() < hi && key_less(n->slotkey[pointslot.getsite()], key)) {
+        //         pointslot++;
+        //     }
+        // }else{
+        //     while (lo <= pointslot.getsite() && key_greaterequal(n->slotkey[pointslot.getsite()], key)) {
+        // // std::cout << __LINE__ <<"\n";
+        //         pointslot--;
+        //     }
+        //     pointslot++;
+        // }
+
         if(n->slotkey[point] < key){
 
-            while (pointslot.getsite() < hi && key_less(n->slotkey[pointslot.getsite()], key)) {
-                pointslot++;
+            while (point < hi ) {
+                if(key_less(n->slotkey[point], key)){
+                    point++;
+                }else if(n->bs[point]){
+                    break;
+                }else{
+                    point++;
+                }
             }
         }else{
-            while (lo <= pointslot.getsite() && key_greaterequal(n->slotkey[pointslot.getsite()], key)) {
-        // std::cout << __LINE__ <<"\n";
-                pointslot--;
+            while (lo <= point) {
+                if(key_greaterequal(n->slotkey[point], key)){
+                    point--;
+                }else if(n->bs[point]){
+                    break;
+                }else{
+                    point--;
+                }
             }
-            pointslot++;
+            point++;
         }
+
+
+
 
 #ifdef LOAD_TIME
 auto currentTime4 = std::chrono::high_resolution_clock::now();
@@ -2419,11 +2448,13 @@ load_counts[btree_level]++;
 
 
 #ifdef COUNT_GAP
-int gap = abs(pre_target-pointslot.getsite()) ;
+// int gap = abs(pre_target-pointslot.getsite()) ;
+int gap = abs(pre_target-point) ;
 gaps[btree_level] += gap;
 gaps_count[btree_level]++;
 #endif
-        return pointslot.getsite();
+        // return pointslot.getsite();
+        return point;
 
     }
 
@@ -2602,9 +2633,9 @@ gaps_count[btree_level]++;
         double up_sum=0,down_sum=0,k=0,b=0,errs=0,fa=0,fb=0;
         hi = n->slotuse-1;
         lo = 0;
-        ele_gap = 32;
+        ele_gap = 16;
         ele_num = hi / ele_gap + 1;
-        base_site = (hi % ele_gap) / 2;
+        base_site = 0;
         /* defines target sites, keys, k and b */
         std::vector<double> keys;
         std::vector<double> sites;
@@ -3691,7 +3722,7 @@ private:
                 inner->slotuse++;
             }
 
-            if(inner->insert_count > 3 || inner->delete_count > 3){
+            if(inner->insert_count > 10 ){
                 retrain(inner);
             }
 
@@ -3711,32 +3742,42 @@ private:
 
             // 找到一个大于或者等于key的位置s，如果等于则放在s后，如果大于也放在s后。
             // 在slot右侧找到下一个空隙位置
+            // std::cout << "slot = " << slot << "\n";
             slotsite tmpsite(leaf, slot);
             // tmpsite++;
             // 如果空隙位置为数据最后一个或者大于一定距离x，右侧查找失败；
             // 则向左侧查找，如果查找空隙位置为第一个或者大于距离x，则左右都查找失败，开始分裂节点
             // 成功则作出相应移动，将数据放入空隙。
             bool have_next, have_prev;
-            uint16_t nextgap = tmpsite.nextneargap(have_next);
-            uint16_t prevgap = tmpsite.prevneargap(have_prev);
+            int nextgap, prevgap;
+            have_next = tmpsite.nextneargap(nextgap);
+            have_prev = tmpsite.prevneargap(prevgap);
             uint16_t gapsite;
+
+            // std::cout << "have_next have_prev" << have_next << " " << have_prev << "\n";
 
             // 找到位置直接插入，找不到位置则regap
             if(have_next){
                 end = nextgap;
+#ifdef GAP_TEST
                 std::cout << "end = nextgap;\n";
+                // std::cout << "end = " << end << "\n";
+#endif
             }
             else if(have_prev){
                 end = prevgap;
+#ifdef GAP_TEST
                 std::cout << "end = prevgap;\n";
+#endif
             }
             else{
                 // regap 成功则插入，不成功则split后插入
                 leaf_node* new_node = NULL;
                 key_type new_key;
                 regap(leaf, &new_key, &new_node);
+#ifdef GAP_TEST
                 std::cout << "new_key = " << new_key << " new_node = " << new_node << std::endl;
-
+#endif
                 // regap产生了新节点
                 if(new_node){
                     retrain(new_node);
@@ -3761,8 +3802,8 @@ private:
                 }
 
                 tmpsite = {leaf, slot};
-                nextgap = tmpsite.nextneargap(have_next);
-                prevgap = tmpsite.prevneargap(have_prev);
+                have_next = tmpsite.nextneargap(nextgap);
+                have_prev = tmpsite.prevneargap(prevgap);
 
                 assert(have_next || have_prev);
 
@@ -3805,7 +3846,12 @@ private:
                     leaf->bs[end] = false;
                 }
             }
-
+#ifdef GAP_TEST
+            std::cout << "end = " << end << "\n";
+            std::cout << "slot = " << slot << "\n";
+            std::cout << "key = " << key << "\n";
+            std::cout << "leaf->slotuse = " << leaf->slotuse << "\n";
+#endif
             leaf->slotkey[slot] = key;
             leaf->bs[slot] = true;
             if (!used_as_set) leaf->slotdata[slot] = value;
@@ -4648,6 +4694,9 @@ private:
                                inner_node* leftparent, inner_node* rightparent,
                                inner_node* parent, unsigned int parentslot)
     {
+#ifdef GAP_TEST
+        std::cout << "erase one\n";
+#endif
         curr->delete_count++;
         if (curr->isleafnode())
         {
@@ -4722,6 +4771,7 @@ private:
                 
                 if(nextseg < leafslotmax && !prevhave){
                     // 向后找
+                    std::cout << "向后找\n";
                     slotsite tmpslot_right(leaf, nextseg);
                     sele = tmpslot_right.nextelecurseg();
                     sgap = tmpslot_right.nextgapcurseg();
@@ -4737,7 +4787,7 @@ private:
                         std::copy(leaf->slotkey + mid, leaf->slotkey + sgap, leaf->slotkey + nextseg);
                         data_copy(leaf->slotdata + mid, leaf->slotdata + sgap, leaf->slotdata + nextseg);
                         bit_copy(leaf->bs, mid, sgap, nextseg);
-                        bit_set(leaf->bs, sgap - mid, sgap, false);
+                        bit_set(leaf->bs, nextseg + sgap - mid, sgap, false);
 
                         if(tmpslot_right.nextseg() == leafslotmax){
                             leaf->slotuse -= (mid - nextseg);
@@ -4752,10 +4802,12 @@ private:
                 if(!prevhave && !nexthave){
                     // 如果前面没有，后面也没有，则直接删除，然后regap
                     leaf->bs[slot] = false;
-                    regap(leaf);
+                    key_type tmpkey = 0;
+                    leaf_node* tmpnode = nullptr;
+                    regap(leaf, &tmpkey, &tmpnode);
                     retrain(leaf);
+                    assert(tmpnode == nullptr);
                 }
-
             }
 
 
@@ -4870,7 +4922,7 @@ private:
             node* myleft, * myright;
             inner_node* myleftparent, * myrightparent;
 
-            int slot = find_lower(inner, key);
+            int slot = find_lower_x(inner, key);
 
             if (slot == 0) {
                 myleft = (left == NULL) ? NULL : (static_cast<inner_node*>(left))->childid[left->slotuse - 1];
@@ -4892,7 +4944,7 @@ private:
 
             BTREE_PRINT("erase_one_descend into " << inner->childid[slot]);
 
-            result_t result = erase_one_descend(key,
+            result_t result = erase_one_descend_x(key,
                                                 inner->childid[slot],
                                                 myleft, myright,
                                                 myleftparent, myrightparent,

@@ -42,8 +42,8 @@ struct traits_nodebug : stx::btree_default_set_traits<KeyType> {
     static const bool selfverify = false;
     static const bool debug = false;
 
-    static const int  leafslots = 256;
-    static const int  innerslots = 256;
+    static const int  leafslots = 1024;
+    static const int  innerslots = 1024;
 };
 
 typedef stx::btree_multimap<size_t, size_t, std::less<size_t>, traits_nodebug<size_t> > btree_type;
@@ -76,15 +76,15 @@ auto test_btree(std::vector<std::pair<size_t,size_t>> data,int count,int times) 
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<int> intDistribution(1,data.size());
-        // for(int j=0;j<count;j++){
-        //     int randomInt = intDistribution(gen);
-        //     auto currentTime1 = std::chrono::high_resolution_clock::now();
-        //     bt.insert(data[randomInt].first,data[randomInt].second);
-        //     auto currentTime2 = std::chrono::high_resolution_clock::now();
-        //     auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        //     auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        //     using_times1 += (nanoseconds2 - nanoseconds1);
-        // }
+        for(int j=0;j<count;j++){
+            int randomInt = intDistribution(gen);
+            auto currentTime1 = std::chrono::high_resolution_clock::now();
+            bt.insert(data[randomInt].first,data[randomInt].second);
+            auto currentTime2 = std::chrono::high_resolution_clock::now();
+            auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+            auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+            using_times1 += (nanoseconds2 - nanoseconds1);
+        }
 
         for(int j=0;j<count;j++){
             int randomInt = intDistribution(gen);
@@ -164,9 +164,32 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
     //     // std::cout << data[randomInt].first << std::endl;
     //     std::cout << 535520564 <<" "<< *res << std::endl;
     // }
-
+/* 
     auto res = bt.find_x(426637128);
+    bt.erase_x(426637092);
+    bt.erase_x(426637123);
+    bt.erase_x(426637125);
+    bt.erase_x(426637127);
+    bt.erase_x(426637128);
+    bt.erase_x(426637462);
 
+    bt.erase_x(426636742);
+    bt.erase_x(426636955);
+    bt.erase_x(426637061);
+
+    bt.erase_x(426636642);
+    // bt.erase_x(426636640);
+    bt.erase_x(426636692);
+
+    bt.erase_x(426637467);
+    bt.erase_x(426637472);
+    bt.erase_x(426637473);
+    bt.erase_x(426637497);
+    bt.erase_x(426637499);
+    res = bt.find_x(426657139);
+ */
+
+/* 
     bt.insert_x(426637129, 426637129);
     bt.insert_x(426637129, 426637129);
     bt.insert_x(426637129, 426637129);
@@ -244,99 +267,84 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,int count,int times
     bt.insert_x(426637128, 426637128);
 
 
-    // auto res1 = bt.find_x(426637129);
+    auto res1 = bt.find_x(426637129);
 
-    // if(res){
-    //     // std::cout << data[randomInt].first << std::endl;
-    //     std::cout << 532096816 <<" "<< *res << std::endl;
-    // }
-
-
-
-    // size_t states[2] = {0};
-    // for(int i=0;i<times;i++){
-    //     for(int j=0;j<5;j++){
-    //         stx::gaps[j] = 1;
-    //         stx::gaps_count[j] = 1;
-    //         stx::level_delay[j] = 1;
-    //         stx::level_delay_count[j] = 1;
-    //         stx::mul_times[j] = 1;
-    //         stx::mul_counts[j] = 1;
-    //         stx::load_times[j] = 1;
-    //         stx::load_counts[j] = 1;
-    //     }
-
-    //     unsigned long using_times1 = 0;
-    //     unsigned long using_times2 = 0;
-    //     std::random_device rd;
-    //     std::mt19937 gen(rd());
-    //     std::uniform_int_distribution<int> intDistribution(1,data.size());
-    //     // for(int j=0;j<count;j++){
-    //     //     int randomInt = intDistribution(gen);
-    //     //     auto currentTime1 = std::chrono::high_resolution_clock::now();
-    //     //     bt.insert_x(data[randomInt].first,data[randomInt].first);
-    //     //     auto currentTime2 = std::chrono::high_resolution_clock::now();
-    //     //     auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-    //     //     auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-    //     //     using_times1 += (nanoseconds2 - nanoseconds1);
-    //     // }
+    if(res){
+        // std::cout << data[randomInt].first << std::endl;
+        std::cout << 532096816 <<" "<< *res << std::endl;
+    }
+ */
 
 
-    //     // // return 1;
-    //     // for(int j=0;j<count;j++){
-    //     //     int randomInt = intDistribution(gen);
-    //     //     size_t ttt = data[randomInt].first;
-    //     //     auto currentTime1 = std::chrono::high_resolution_clock::now();
-    //     //     // auto res = bt.find_x(ttt);
-    //     //     auto res = bt.find_x(data[randomInt].first);
-    //     //     auto currentTime2 = std::chrono::high_resolution_clock::now();
-    //     //     auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-    //     //     auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-    //     //     // if(res == nullptr && data[randomInt].first != 0 ){
-    //     //     //     std::cout 
-    //     //     //     << data[randomInt].first  <<"\t"
-    //     //     //     << data[randomInt].second <<"\n" ;
-    //     //     // }
+    // bt.insert_x(636529475, 636529475);
+    // bt.insert_x(636529475, 636529475);
+    // bt.insert_x(636529475, 636529475);
+    // bt.find_x(636529475);
+    // bt.insert_x(636529475, 636529475);
 
-    //     //     // std::cout << *res << "\n";
-    //     //     // tmp_num += (size_t)res;
-    //     //     // if(t < 0){}
+\
+    size_t states[2] = {0};
+    for(int i=0;i<times;i++){
+        for(int j=0;j<5;j++){
+            stx::gaps[j] = 1;
+            stx::gaps_count[j] = 1;
+            stx::level_delay[j] = 1;
+            stx::level_delay_count[j] = 1;
+            stx::mul_times[j] = 1;
+            stx::mul_counts[j] = 1;
+            stx::load_times[j] = 1;
+            stx::load_counts[j] = 1;
+        }
 
+        unsigned long using_times1 = 0;
+        unsigned long using_times2 = 0;
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> intDistribution(1,data.size());
 
-    //     //     // if(res){
-    //     //     //     // std::cout << data[randomInt].first << std::endl;
-    //     //     //     if(data[randomInt].first != *res) std::cout << data[randomInt].first <<" "<< *res << std::endl;
-    //     //     // }
-
-    //     //     if(res){
-    //     //         // std::cout << data[randomInt].first << std::endl;
-    //     //         std::cout << data[randomInt].first <<" "<< *res << std::endl;
-    //     //     }
-
-    //     //     // if(res == bt.end() || data[randomInt].first != res->second){
-    //     //     //     std::cout 
-    //     //     //     << data[randomInt].first  <<"\t"
-    //     //     //     << data[randomInt].second <<"\t"
-    //     //     //     << res->first << "\t" 
-    //     //     //     << res->second << "\t"
-    //     //     //     << std::endl;
-    //     //     // }
-    //     //     using_times2 += (nanoseconds2 - nanoseconds1);
-    //     // }
+        for(int j=0;j<count;j++){
+            int randomInt = intDistribution(gen);
+            auto currentTime1 = std::chrono::high_resolution_clock::now();
+            bt.insert_x(data[randomInt].first,data[randomInt].first);
+            auto currentTime2 = std::chrono::high_resolution_clock::now();
+            auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+            auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+            using_times1 += (nanoseconds2 - nanoseconds1);
+        }
 
 
-    //     std::cout 
-    //     << __func__ 
-    //     << " insert用时-纳秒:" << using_times1 / count 
-    //     << " find用时-纳秒:" << static_cast<double>(using_times2) / count 
-    //     << " 数据量-百万:" << bt.size()/1000000 << " |" ;
-    //     print_sts(stx::gaps, stx::gaps_count);
-    //     print_sts(stx::mul_times, stx::mul_counts);
-    //     print_sts(stx::load_times, stx::load_counts);
-    //     std::cout <<  "\n";
-    //     states[0] += using_times2;
-    // }
-    // std::cout << __func__ << "平均用时" << states[0] / (times*count) << "\n";
+        for(int j=0;j<count;j++){
+            int randomInt = intDistribution(gen);
+            size_t ttt = data[randomInt].first;
+            auto currentTime1 = std::chrono::high_resolution_clock::now();
+            // auto res = bt.find_x(ttt);
+            auto res = bt.find_x(data[randomInt].first);
+            auto currentTime2 = std::chrono::high_resolution_clock::now();
+            auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+            auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+
+            if(res){
+                // std::cout << data[randomInt].first << std::endl;
+                if(data[randomInt].first != *res) std::cout << data[randomInt].first <<" "<< *res << std::endl;
+            }
+
+            using_times2 += (nanoseconds2 - nanoseconds1);
+        }
+
+
+        std::cout 
+        << __func__ 
+        << " insert用时-纳秒:" << using_times1 / count 
+        << " find用时-纳秒:" << static_cast<double>(using_times2) / count 
+        << " 数据量-百万:" << bt.size()/1000000 << " |" ;
+        print_sts(stx::gaps, stx::gaps_count);
+        print_sts(stx::mul_times, stx::mul_counts);
+        print_sts(stx::load_times, stx::load_counts);
+        std::cout <<  "\n";
+        states[0] += using_times2;
+    }
+    std::cout << __func__ << "平均用时" << states[0] / (times*count) << "\n"; 
+
     return true;
     
 }
@@ -358,15 +366,19 @@ auto test_alex(std::vector<std::pair<size_t,size_t>> data,int count,int times) -
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<int> intDistribution(1,data.size());
-        // for(int j=0;j<count;j++){
-        //     int randomInt = intDistribution(gen);
-        //     auto currentTime1 = std::chrono::high_resolution_clock::now();
-        //     index.insert(data[randomInt].first,data[randomInt].second);
-        //     auto currentTime2 = std::chrono::high_resolution_clock::now();
-        //     auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        //     auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        //     using_times1 += (nanoseconds2 - nanoseconds1);
-        // }
+
+
+        for(int j=0;j<count;j++){
+            int randomInt = intDistribution(gen);
+            auto currentTime1 = std::chrono::high_resolution_clock::now();
+            index.insert(data[randomInt].first,data[randomInt].second);
+            auto currentTime2 = std::chrono::high_resolution_clock::now();
+            auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+            auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+            using_times1 += (nanoseconds2 - nanoseconds1);
+        }
+
+
         for(int j=0;j<count;j++){
             int randomInt = intDistribution(gen);
             size_t ttt = data[randomInt].first;

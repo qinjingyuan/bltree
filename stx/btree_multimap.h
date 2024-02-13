@@ -550,6 +550,10 @@ public:
     {
         return tree.erase(key);
     }
+    size_type erase_x(const key_type& key)
+    {
+        return tree.erase_x(key);
+    }
 
     /// Erase the key/data pair referenced by the iterator.
     void erase(iterator iter)
