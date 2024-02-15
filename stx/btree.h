@@ -450,9 +450,13 @@ private:
         /// Array of data
         data_type slotdata[used_as_set ? 1 : leafslotmax];
 
+        //predirt errors
+        int pre_errors;
+
+
         /// Set variables to initial values
         inline leaf_node()
-            : node(0), prevleaf(NULL), nextleaf(NULL)
+            : node(0), prevleaf(NULL), nextleaf(NULL), pre_errors(0)
         { }
 
         /// Construction during restore from node top
@@ -4112,7 +4116,7 @@ public:
             uint16_t ecount = 0;
             size_t segcount = num_seg / (num_leaves - i);
             leaf->slotusevalid = static_cast<int>(num_seg / (num_leaves - i) * slotsite::elesize() );
-            leaf->slotuse = static_cast<int>(num_seg / (num_leaves - i) * segsize - 2);
+            leaf->slotuse = static_cast<int>(num_seg / (num_leaves - i) * segsize);
             for (size_t s = 0; s < leaf->slotuse; ++s){
                 // std::cout << slotsite::isgap(s) << ":" << s << " ";
                 if(!slotsite::isgap(s)){
@@ -4715,99 +4719,37 @@ private:
 
             BTREE_PRINT("Found key in leaf " << curr << " at slot " << slot);
 
-            slotsite tmpslot(leaf, slot);
-            // int seg_end = tmpslot.nextgapfrag();
 
+            /* 重要删除逻辑 */
+            int next_gap = slot;
+            // 寻找下一个空隙
+            while(next_gap < (slot | 7) + 1 && leaf->bs[next_gap] == true){
+                next_gap++;
+            }
 
-            // 在当前seg中查找补充元素
-            int sele = tmpslot.nextelecurseg();
-            int sgap = tmpslot.nextgapcurseg();
-            int currseg = tmpslot.currseg();
-            int nextseg = tmpslot.nextseg();
-            int prevseg = tmpslot.prevseg();
-            if(sgap > sele){
-                // 是seg中间的一个元素
-                std::copy(leaf->slotkey + sele, leaf->slotkey + sgap, leaf->slotkey + slot);
-                data_copy(leaf->slotdata + sele, leaf->slotdata + sgap, leaf->slotdata + slot);
-                bit_copy(leaf->bs, sele, sgap, slot);
-                leaf->bs[sgap - 1] = false;
-                // bit_set(leaf->bs, sgap - 1, sgap, false);
+            if(next_gap == slot + 1 && slot % segsize == 0){
+                // 将后面的seg整体前移一个seg
+                std::copy(leaf->slotkey + slot + segsize, leaf->slotkey + leaf->slotuse, leaf->slotkey + slot);
+                data_copy(leaf->slotdata + slot + segsize, leaf->slotdata + leaf->slotuse, leaf->slotdata + slot);
+                bit_copy(leaf->bs, slot + segsize, leaf->slotuse, slot);
+                bit_set(leaf->bs, leaf->slotuse - segsize, leaf->slotuse, false);
+                leaf->slotusevalid--;
+                leaf->slotuse -= segsize;
+                leaf->pre_errors += (leaf->slotuse - slot - segsize);
 
-                if(tmpslot.nextseg() == leafslotmax){
-                    leaf->slotuse--;
-                }
+            }else{
+                // 删除一个，seg内前移
+                std::copy(leaf->slotkey + slot + 1, leaf->slotkey + next_gap, leaf->slotkey + slot);
+                data_copy(leaf->slotdata + slot + 1, leaf->slotdata + next_gap, leaf->slotdata + slot);
+                bit_copy(leaf->bs, slot + 1, next_gap, slot);
+                leaf->bs[next_gap - 1] = false;
                 leaf->slotusevalid--;
 
             }
-            else if(sele - sgap != segsize - 1){
-                // seg元素不为1，且是seg中最后一个
-                leaf->bs[slot] = false;
-                if(tmpslot.nextseg() == leafslotmax){
-                    leaf->slotuse--;
-                }
-                leaf->slotusevalid--;
 
-            }else{
-                // seg中元素为1
-                bool nexthave = false, prevhave = false;
-                if(prevseg >= 0){
-                    // 向前找
-                    slotsite tmpslot_left(leaf, prevseg);
-                    sele = tmpslot_left.nextelecurseg();
-                    sgap = tmpslot_left.nextgapcurseg();
-                    if(sele - sgap != segsize - 1){
-                        // seg元素不为1个，将一半元素拷贝过去
-                        int mid = (prevseg + sgap) >> 1;
-                        std::copy(leaf->slotkey + mid, leaf->slotkey + sgap, leaf->slotkey + currseg);
-                        data_copy(leaf->slotdata + mid, leaf->slotdata + sgap, leaf->slotdata + currseg);
-                        bit_copy(leaf->bs, mid, sgap, currseg);
-                        bit_set(leaf->bs, mid, sgap, false);
-
-                        leaf->slotusevalid--;
-
-                        prevhave = true;
-                    }
-                }
-                
-                if(nextseg < leafslotmax && !prevhave){
-                    // 向后找
-                    std::cout << "向后找\n";
-                    slotsite tmpslot_right(leaf, nextseg);
-                    sele = tmpslot_right.nextelecurseg();
-                    sgap = tmpslot_right.nextgapcurseg();
-                    if(sele - sgap != segsize - 1){
-                        // seg元素不为1个，将一半元素拷贝过去
-                        int mid = (nextseg + sgap) >> 1;
-                        // 将右边的前半部分拷贝过去
-                        std::copy(leaf->slotkey + nextseg, leaf->slotkey + mid, leaf->slotkey + currseg);
-                        data_copy(leaf->slotdata + nextseg, leaf->slotdata + mid, leaf->slotdata + currseg);
-                        bit_copy(leaf->bs, nextseg, mid, currseg);
-                        bit_set(leaf->bs, nextseg, mid, false);
-                        // 将右边的后半部分前移
-                        std::copy(leaf->slotkey + mid, leaf->slotkey + sgap, leaf->slotkey + nextseg);
-                        data_copy(leaf->slotdata + mid, leaf->slotdata + sgap, leaf->slotdata + nextseg);
-                        bit_copy(leaf->bs, mid, sgap, nextseg);
-                        bit_set(leaf->bs, nextseg + sgap - mid, sgap, false);
-
-                        if(tmpslot_right.nextseg() == leafslotmax){
-                            leaf->slotuse -= (mid - nextseg);
-                        }
-                        leaf->slotusevalid--;
-
-                        nexthave = true;
-                    }
-                    
-                }
-                
-                if(!prevhave && !nexthave){
-                    // 如果前面没有，后面也没有，则直接删除，然后regap
-                    leaf->bs[slot] = false;
-                    key_type tmpkey = 0;
-                    leaf_node* tmpnode = nullptr;
-                    regap(leaf, &tmpkey, &tmpnode);
-                    retrain(leaf);
-                    assert(tmpnode == nullptr);
-                }
+            // 移动量到达阈值，重新训练
+            if(leaf->pre_errors > leaf->slotuse * 2){
+                retrain(leaf);
             }
 
 
