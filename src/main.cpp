@@ -168,6 +168,9 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,
     << " " << stx::node_type_counts[6]
     << "\n";
 
+    // bt.erase_x(505331665);
+
+
     size_t states[2] = {0};
     for(int i=0;i<times;i++){
         for(int j=0;j<5;j++){
@@ -188,15 +191,15 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,
         std::mt19937 gen(rd());
         std::uniform_int_distribution<int> intDistribution(1,data.size());
 
-        // for(int j = 0; j < insert_count; j++){
-        //     int randomInt = intDistribution(gen) % data.size();
-        //     auto currentTime1 = std::chrono::high_resolution_clock::now();
-        //     bt.insert_x(data[randomInt].first,data[randomInt].first);
-        //     auto currentTime2 = std::chrono::high_resolution_clock::now();
-        //     auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        //     auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        //     insert_times += (nanoseconds2 - nanoseconds1);
-        // }
+        for(int j = 0; j < insert_count; j++){
+            int randomInt = intDistribution(gen) % data.size();
+            auto currentTime1 = std::chrono::high_resolution_clock::now();
+            bt.insert_x(data[randomInt].first,data[randomInt].first);
+            auto currentTime2 = std::chrono::high_resolution_clock::now();
+            auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+            auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+            insert_times += (nanoseconds2 - nanoseconds1);
+        }
 
         for(int j = 0; j < erase_count; j++){
             int randomInt = intDistribution(gen) % data.size();
@@ -219,7 +222,6 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,
             auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
 
             if(res){
-                // std::cout << data[randomInt].first << std::endl;
                 if(data[randomInt].first != *res) 
                     std::cout << data[randomInt].first <<" "<< *res << std::endl;
             }
@@ -359,10 +361,8 @@ int main(int argc, char** argv){
     }
 
     test_btree_x(data, 20000, 20000, 200000, 10);
-    test_alex(data, 20000, 20000, 200000, 10);
-    test_btree(data, 20000, 20000, 200000, 10);
-
-
+    // test_alex(data, 20000, 20000, 200000, 10);
+    // test_btree(data, 20000, 20000, 200000, 10);
 
     return 0;
 
