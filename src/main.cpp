@@ -78,25 +78,26 @@ auto test_btree(std::vector<std::pair<size_t,size_t>> data,
         std::mt19937 gen(rd());
         std::uniform_int_distribution<int> intDistribution(1,data.size());
 
-        // for(int j = 0; j < insert_count; j++){
-        //     int randomInt = intDistribution(gen) % data.size();
-        //     auto currentTime1 = std::chrono::high_resolution_clock::now();
-        //     bt.insert(data[randomInt].first,data[randomInt].second);
-        //     auto currentTime2 = std::chrono::high_resolution_clock::now();
-        //     auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        //     auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        //     insert_times += (nanoseconds2 - nanoseconds1);
-        // }
-
-        for(int j = 0; j < erase_count; j++){
+        for(int j = 0; j < insert_count; j++){
             int randomInt = intDistribution(gen) % data.size();
             auto currentTime1 = std::chrono::high_resolution_clock::now();
-            bt.erase(data[randomInt].first);
+            bt.insert(data[randomInt].first,data[randomInt].second);
             auto currentTime2 = std::chrono::high_resolution_clock::now();
             auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
             auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-            erase_times += (nanoseconds2 - nanoseconds1);
+            insert_times += (nanoseconds2 - nanoseconds1);
         }
+
+        // for(int j = 0; j < erase_count; j++){
+        //     int randomInt = intDistribution(gen) % data.size();
+        //     auto currentTime1 = std::chrono::high_resolution_clock::now();
+        //     bt.erase(data[randomInt].first);
+        //     auto currentTime2 = std::chrono::high_resolution_clock::now();
+        //     auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        //     auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        //     erase_times += (nanoseconds2 - nanoseconds1);
+        // }
+        
 
         for(int j = 0; j < find_count; j++){
             int randomInt = intDistribution(gen) % data.size();
@@ -201,15 +202,15 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,
             insert_times += (nanoseconds2 - nanoseconds1);
         }
 
-        for(int j = 0; j < erase_count; j++){
-            int randomInt = intDistribution(gen) % data.size();
-            auto currentTime1 = std::chrono::high_resolution_clock::now();
-            bt.erase_x(data[randomInt].first);
-            auto currentTime2 = std::chrono::high_resolution_clock::now();
-            auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-            auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-            erase_times += (nanoseconds2 - nanoseconds1);
-        }
+        // for(int j = 0; j < erase_count; j++){
+        //     int randomInt = intDistribution(gen) % data.size();
+        //     auto currentTime1 = std::chrono::high_resolution_clock::now();
+        //     bt.erase_x(data[randomInt].first);
+        //     auto currentTime2 = std::chrono::high_resolution_clock::now();
+        //     auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        //     auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        //     erase_times += (nanoseconds2 - nanoseconds1);
+        // }
 
         for(int j = 0; j < find_count; j++){
             int randomInt = intDistribution(gen) % data.size();
@@ -266,27 +267,25 @@ auto test_alex(std::vector<std::pair<size_t,size_t>> data,
         std::mt19937 gen(rd());
         std::uniform_int_distribution<int> intDistribution(1,data.size());
 
-
-        // for(int j = 0; j < insert_count; j++){
-        //     int randomInt = intDistribution(gen)  % data.size();
-        //     auto currentTime1 = std::chrono::high_resolution_clock::now();
-        //     index.insert(data[randomInt].first,data[randomInt].second);
-        //     auto currentTime2 = std::chrono::high_resolution_clock::now();
-        //     auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
-        //     auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-        //     insert_times += (nanoseconds2 - nanoseconds1);
-        // }
-
-
-        for(int j = 0; j < erase_count; j++){
+        for(int j = 0; j < insert_count; j++){
             int randomInt = intDistribution(gen)  % data.size();
             auto currentTime1 = std::chrono::high_resolution_clock::now();
-            index.erase(data[randomInt].first);
+            index.insert(data[randomInt].first,data[randomInt].second);
             auto currentTime2 = std::chrono::high_resolution_clock::now();
             auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
             auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
-            erase_times += (nanoseconds2 - nanoseconds1);
+            insert_times += (nanoseconds2 - nanoseconds1);
         }
+
+        // for(int j = 0; j < erase_count; j++){
+        //     int randomInt = intDistribution(gen)  % data.size();
+        //     auto currentTime1 = std::chrono::high_resolution_clock::now();
+        //     index.erase(data[randomInt].first);
+        //     auto currentTime2 = std::chrono::high_resolution_clock::now();
+        //     auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
+        //     auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
+        //     erase_times += (nanoseconds2 - nanoseconds1);
+        // }
 
 
         for(int j = 0; j < find_count; j++){
@@ -361,8 +360,8 @@ int main(int argc, char** argv){
     }
 
     test_btree_x(data, 20000, 20000, 200000, 10);
-    // test_alex(data, 20000, 20000, 200000, 10);
-    // test_btree(data, 20000, 20000, 200000, 10);
+    // test_alex(   data, 20000, 20000, 200000, 10);
+    // test_btree(  data, 20000, 20000, 200000, 10);
 
     return 0;
 

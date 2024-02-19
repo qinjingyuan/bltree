@@ -3656,7 +3656,7 @@ private:
                                              const key_type& key, const data_type& value,
                                              key_type* splitkey, node** splitnode)
     {
-        n->insert_count++;
+        
 
         if (!n->isleafnode())
         {
@@ -3674,6 +3674,8 @@ private:
 
             if (newchild)
             {
+                n->insert_count++;
+
                 BTREE_PRINT("btree::insert_descend newchild with key " << newkey << " node " << newchild << " at slot " << slot);
 
                 if (inner->isfull())
@@ -3766,7 +3768,12 @@ private:
             if (leaf->isfull())
             {
                 split_leaf_node_x(leaf, splitkey, splitnode);
-
+                retrain(leaf);
+                retrain(static_cast<leaf_node*>(*splitnode));
+#ifdef GAP_TEST
+                print_node_info(leaf);
+                print_node_info(static_cast<leaf_node*>(*splitnode));
+#endif
                 // check if insert slot is in the split sibling node
                 if (slot >= leaf->slotuse)
                 {
@@ -3775,17 +3782,32 @@ private:
                 }
             }
 
+            // 让slot指向大于等于的上一个空隙
+            if((slot & 7) == 0 && slot != 0){
+                while (!leaf->bs[--slot])
+                {
+                    /* code */
+                }
+                slot++;
+                
+            }
+
 
             /* 重要插入逻辑 */
             int next_gap = slot;
+            int next_seg_site = (slot | 7) + 1;
             // 寻找下一个空隙
-            while(next_gap < (slot | 7) + 1 && leaf->bs[next_gap] == true){
+            while(next_gap < std::min(next_seg_site + 16, leafslotmax + 0 ) && leaf->bs[next_gap] == true){
                 next_gap++;
             }
 
-            int next_seg_site = (slot | 7) + 1;
+            // std::cout << "next_gap = " << next_gap << 
+            // " next_seg_site = " << next_seg_site <<
+            // " slot = " << slot << "\n";
+            // std::cout << "__LINE__ = " << __LINE__ << "\n";
 
-            if(next_gap == (slot | 7) + 1){
+
+            if(next_gap == next_seg_site){
                 // seg中没有空隙了
                 std::copy_backward(leaf->slotkey + next_seg_site, leaf->slotkey + leaf->slotuse, leaf->slotkey + leaf->slotuse + 8);
                 data_copy_backward(leaf->slotdata + next_seg_site, leaf->slotdata + leaf->slotuse, leaf->slotdata + leaf->slotuse + 8);
@@ -3805,19 +3827,33 @@ private:
                 bit_set(leaf->bs, next_seg_site - 4, next_seg_site, false);
                 if(slot <= next_seg_site - 4) slot += 4;
 
+                leaf->pre_errors += (leaf->slotuse - slot - segsize);
+
                 leaf->slotuse += 8;
                 leaf->slotusevalid++;
             }else{
                 // seg中存在空隙
-                std::copy_backward(leaf->slotkey + slot, leaf->slotkey + next_seg_site, leaf->slotkey + next_seg_site + 1);
-                data_copy_backward(leaf->slotdata + slot, leaf->slotdata + next_seg_site, leaf->slotdata + next_seg_site + 1);
-                bit_copy_backward(leaf->bs, slot, next_seg_site, next_seg_site + 1);
+                std::copy_backward(leaf->slotkey + slot, leaf->slotkey + next_gap, leaf->slotkey + next_gap + 1);
+                data_copy_backward(leaf->slotdata + slot, leaf->slotdata + next_gap, leaf->slotdata + next_gap + 1);
+                bit_copy_backward(leaf->bs, slot, next_gap, next_gap + 1);
                 
                 leaf->slotkey[slot] = key;
                 leaf->slotdata[slot] = value;
+                leaf->bs[slot] = true;
 
                 leaf->slotusevalid++;
             }
+
+            // 移动量到达阈值，重新训练
+            if(leaf->pre_errors > leaf->slotuse * 2){
+                retrain(leaf);
+            }
+
+
+
+#ifdef GAP_TEST
+            print_node_info(leaf);
+#endif
 
             if (splitnode && leaf != *splitnode && slot == fun_last_ele_site(leaf))
             {
@@ -3895,6 +3931,7 @@ private:
                   newleaf->slotkey);
         data_copy(leaf->slotdata + mid, leaf->slotdata + leaf->slotuse,
                   newleaf->slotdata);
+        bit2_copy(leaf->bs, mid, leaf->slotuse, newleaf->bs, 0);
 
         leaf->slotuse = mid;
         leaf->slotusevalid -= newleaf->slotusevalid;
@@ -4089,7 +4126,7 @@ public:
         // 计算需要多少个叶子节点
         size_t num_items = iend - ibegin;
         size_t num_seg = (num_items / segsize) + 1; 
-        size_t segmax = leafslotmax / segsize;
+        size_t segmax = leafslotmax / segsize - 2;
         size_t num_leaves = (num_seg + segmax - 1) / segmax;
 
         BTREE_PRINT("btree::bulk_load, level 0: " << m_stats.itemcount << " items into " << num_leaves << " leaves with up to " << ((iend - ibegin + num_leaves - 1) / num_leaves) << " items per leaf.");
@@ -4740,7 +4777,7 @@ private:
             }
 
             // 移动量到达阈值，重新训练
-            if(leaf->pre_errors > leaf->slotuse * 2){
+            if(std::abs(leaf->pre_errors) > leaf->slotuse * 2){
                 retrain(leaf);
             }
 
