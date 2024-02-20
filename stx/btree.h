@@ -2646,6 +2646,29 @@ gaps_count[btree_level]++;
         return sum_up + sum_dowm;
     }
 
+    // 最小二乘法拟合直线的函数
+    void leastSquaresFit(const std::vector<double>& x, const std::vector<double>& y, double& slope, double& intercept) {
+        int n = x.size();
+        if (n != static_cast<int>(y.size()) || n == 0) {
+            std::cerr << "Error: Invalid input data\n";
+            return;
+        }
+
+        double sum_x = 0.0, sum_y = 0.0, sum_xy = 0.0, sum_x_squared = 0.0;
+
+        // 计算各种累加值
+        for (int i = 0; i < n; ++i) {
+            sum_x += x[i];
+            sum_y += y[i];
+            sum_xy += x[i] * y[i];
+            sum_x_squared += x[i] * x[i];
+        }
+
+        // 计算斜率和截距
+        slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x_squared - sum_x * sum_x);
+        intercept = (sum_y - slope * sum_x) / n;
+    }
+
     // generate duoxiangshi model
     template<typename T>
     bool retrain(T* n){
@@ -2742,23 +2765,31 @@ gaps_count[btree_level]++;
         }
 
         else if(errs < 96){
-            if(k > k0 && k < k3){
-                // 小凸 small convex
-                n->model_type = modelType::LINE;
-                n->fk[0] = fa;
-                n->fb[0] = fb + 0.8*errs;
+            // 两点式
+            // if(k > k0 && k < k3){
+            //     // 小凸 small convex
+            //     n->model_type = modelType::LINE;
+            //     n->fk[0] = fa;
+            //     n->fb[0] = fb + 0.8*errs;
 
-            }else if(k < k0 && k > k3){
-                // 小凹 small concave
-                n->model_type = modelType::LINE;
-                n->fk[0] = fa;
-                n->fb[0] = fb - 0.8*errs;
-            }else{
-                // small S type
-                n->model_type = modelType::LINE;
-                n->fk[0] = fa;
-                n->fb[0] = fb;
-            }
+            // }else if(k < k0 && k > k3){
+            //     // 小凹 small concave
+            //     n->model_type = modelType::LINE;
+            //     n->fk[0] = fa;
+            //     n->fb[0] = fb - 0.8*errs;
+            // }else{
+            //     // small S type
+            //     n->model_type = modelType::LINE;
+            //     n->fk[0] = fa;
+            //     n->fb[0] = fb;
+            // }
+
+            // 最小二乘法
+            leastSquaresFit(keys, sites, n->fk[0], n->fb[0]);
+
+
+
+
         }
 
         else{
