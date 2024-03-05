@@ -96,6 +96,7 @@
         "*.inc": "cpp",
         "alignedvector3": "cpp",
         "format": "cpp",
-        "stdfloat": "cpp"
+        "stdfloat": "cpp",
+        "bvh": "cpp"
     }
 }

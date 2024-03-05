@@ -44,6 +44,6 @@ add_definitions(-DCOUNT_GAP)
 
 # add_definitions(-DGAP_TEST)
 
-
+# add_definitions(-DRES)
 
 

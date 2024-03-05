@@ -1,0 +1,58 @@
+alex.h:53:          bool allow_duplicates = true>
+alex.h:93:    bool approximate_model_computation = true;
+alex.h:410:    while (true) {
+alex.h:437:                correct_traversal_path(leaf, *traversal_path, true);
+alex.h:862:      bool compute_cost = true, const fanout_tree::FTNode* tree_node = nullptr,
+alex.h:1006:    while (true) {
+alex.h:1029:    while (true) {
+alex.h:1140:        expand_root(key, true);  // expand to the left
+alex.h:1196:          leaf->resize(data_node_type::kMinDensity_, true,
+alex.h:1256:    return {Iterator(leaf, insert_pos), true};
+alex.h:1498:            outermost_node, left_boundary, right_boundary, true);
+alex.h:1527:            outermost_node, left_boundary, right_boundary, true);
+alex.h:1551:                                  true);
+alex.h:1701:        old_node, 0, right_boundary, true, nullptr, reuse_model,
+alex.h:1707:        old_node, right_boundary, old_node->data_capacity_, true, nullptr,
+alex.h:1840:        left_half_appending_right = true;
+alex.h:1843:        right_half_appending_right = true;
+alex.h:1853:        left_half_appending_left = true;
+alex.h:1856:        right_half_appending_left = true;
+alex.h:1863:        leaf, 0, mid_boundary, true, nullptr, reuse_model,
+alex.h:1867:        leaf, mid_boundary, leaf->data_capacity_, true, nullptr, reuse_model,
+alex.h:1930:        pull_up_right_child = true;
+alex.h:1937:        pull_up_left_child = true;
+alex.h:2228:        correct_traversal_path(leaf, traversal_path, true);
+alex.h:2377:  // If short_circuit is true, then we stop validating after detecting the first
+alex.h:2381:    bool is_valid = true;
+alex.h:2392:        if (!node->validate_structure(true)) {
+alex.h:2412:          if (!node->validate_structure(true)) {
+alex_fanout_tree.h:75:          fanout_tree[level - 1][i].use = true;
+alex_fanout_tree.h:76:          at_least_one_merge = true;
+alex_fanout_tree.h:93:          fanout_tree[level - 1][i].use = true;
+alex_fanout_tree.h:95:          at_least_one_merge = true;
+alex_fanout_tree.h:118:                     bool approximate_model_computation = true,
+alex_fanout_tree.h:190:    bool approximate_model_computation = true,
+alex_fanout_tree.h:223:    tree_node.use = true;
+alex_fanout_tree.h:244:    double expected_insert_frac = 0, bool approximate_model_computation = true,
+alex_fanout_tree.h:250:  fanout_tree.push_back({{0, 0, overall_cost, 0, num_keys, true}});
+alex_fanout_tree.h:253:  while (true) {
+alex_fanout_tree.h:257:        tree_node.use = true;
+alex_fanout_tree.h:307:                               true, node_stats[i].num_search_iterations,
+alex_fanout_tree.h:325:        tree_node.use = true;
+alex_fanout_tree.h:437:    tree_node.use = true;
+alex_multimap.h:30:  typedef Alex<T, P, Compare, Alloc, true> alex_impl;
+alex_nodes.h:273:    return true;
+alex_nodes.h:292:          bool allow_duplicates = true>
+alex_nodes.h:384:      : AlexNode<T, P>(0, true), key_less_(comp), allocator_(alloc) {}
+alex_nodes.h:388:      : AlexNode<T, P>(level, true),
+alex_nodes.h:910:        false;  // set to true when search iters is accurately computed
+alex_nodes.h:912:        false;  // set to true when shifts is accurately computed
+alex_nodes.h:915:    while (true) {
+alex_nodes.h:954:          search_iters_computed = true;
+alex_nodes.h:972:            shifts_computed = true;
+alex_nodes.h:1507:      return {std::min(predicted_pos, get_next_filled_position(pos, true) - 1),
+alex_nodes.h:1514:  // If exclusive is true, output is at least (pos + 1)
+alex_nodes.h:1665:  // Returns true if cost is catastrophically high and we want to force a split
+alex_nodes.h:2302:    return true;
+alex_nodes.h:2306:  // If validate_bitmap is true, confirm that the corresponding position in the
+alex_nodes.h:2312:        return true;

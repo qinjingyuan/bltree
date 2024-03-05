@@ -2112,6 +2112,7 @@ private:
 #ifdef LEVEL_COUNT_TIME
         auto currentTime1 = std::chrono::high_resolution_clock::now();
 #endif
+        // print_node_info_c(n);
         // if (sizeof(n->slotkey) > traits::binsearch_threshold)
         if (n->slotuse > 32)
         {
@@ -2331,11 +2332,11 @@ gaps_count[btree_level]++;
     inline int find_lower_x(const leaf_node* n, const key_type key )
     {
 
+        if (n->slotuse == 0) return 0;
         if(n->model_type == modelType::GENERAL){
             return find_lower(n, key);
         }
 
-        if (n->slotuse == 0) return 0;
         int lo = 0, hi = n->slotuse;
         int pre_target,point;
         int pt0,pt1,pt2;
@@ -2344,7 +2345,7 @@ gaps_count[btree_level]++;
         << ", key = " << key 
         << ", minkey = " << n->slotkey[0]  
         << ", maxkey = " << n->slotkey[hi - 1]
-        << std::endl;  
+        << std::endl;
         print_node_info(n);
         std::cout << n->fk[0] << " " << n->fk[1] << " " << n->fk[2] << " \n";
         std::cout << n->fb[0] << " " << n->fb[1] << " " << n->fb[2] << " \n";
@@ -2435,26 +2436,54 @@ auto currentTime3 = std::chrono::high_resolution_clock::now();
         if(n->slotkey[point] < key){
 
             while (point < hi ) {
-                if(key_less(n->slotkey[point], key)){
-                    point++;
-                }else if(n->bs[point]){
-                    break;
+                if(n->bs[point]){
+                    if(key_less(n->slotkey[point], key)){
+                        point++;
+                    }else{
+                        break;
+                    }
                 }else{
                     point++;
                 }
+
+                // if(key_less(n->slotkey[point], key)){
+                //     point++;
+                // }else if(n->bs[point]){
+                //     break;
+                // }else{
+                //     point++;
+                // }
             }
         }else{
             while (lo <= point) {
-                if(key_greaterequal(n->slotkey[point], key)){
-                    point--;
-                }else if(n->bs[point]){
-                    break;
+
+                if(n->bs[point]){
+                    if(key_greaterequal(n->slotkey[point], key)){
+                        point--;
+                    }else{
+                        break;
+                    }
                 }else{
                     point--;
                 }
+
+                // if(key_greaterequal(n->slotkey[point], key)){
+                //     point--;
+                // }else if(n->bs[point]){
+                //     break;
+                // }else{
+                //     point--;
+                // }
             }
             point++;
         }
+
+        while(!n->bs[point]){
+            point++;
+        }
+
+
+        // std::cout << "point " << point << "\n";
 
 
 
@@ -2525,8 +2554,89 @@ gaps_count[btree_level]++;
         std::cout << "\n";
     }
 
+
+    void print_inner_node(inner_node* n){
+        std::cout << n << " inner_node \n";
+        int hi = n->slotuse, lo = 0;
+        for(int i = 0; i < hi; i++){
+            std::cout << n->slotkey[i] << ",";
+            std::cout << n->bs[i] << "|";
+            if((i & 7) == 7) std::cout << "\t";
+            if((i & 15) == 15) std::cout << "\n";
+        }
+        std::cout << "\n";
+
+    }
+
+
+    // template<typename T>
+    // void print_node_info(T* n){
+    //     int hi = n->slotuse, lo = 0;
+    //     if(n->isleafnode()){
+    //         leaf_node* leaf = static_cast<leaf_node*>(n);
+    //         std::cout << n << " leaf_node \n";
+
+    //         for(int i = 0; i < hi; i++){
+    //             if(leaf->bs[i]) std::cout << leaf->slotkey[i] << ","; else std::cout << 0 << ",";
+    //             std::cout << leaf->bs[i] << "|";
+    //             if((i & 7 )== 7) std::cout << "\t";
+    //             if((i & 15 )== 15) std::cout << "\n";
+    //         }
+    //         std::cout << "\n";
+
+
+    //     }else{
+
+    //         std::cout << n << " inner_node \n";
+    //         inner_node* inner = static_cast<inner_node*>(n);
+    //         for(int i = 0; i < hi; i++){
+    //             std::cout << inner->slotkey[i] << ",";
+    //             std::cout << inner->bs[i] << "|";
+    //             if((i & 7) == 7) std::cout << "\t";
+    //             if((i & 15) == 15) std::cout << "\n";
+    //         }
+    //         std::cout << "\n";
+
+
+
+    //     }
+
+    //     std::cout << "\n";
+    // }
+
     template<typename T>
     void print_node_info(T* n){
+        int hi = n->slotuse, lo = 0;
+        if(n->isleafnode()){
+            std::cout << n << " leaf_node \n";
+
+            for(int i = 0; i < hi; i++){
+                if(n->bs[i]) std::cout << n->slotkey[i] << ","; else std::cout << 0 << ",";
+                std::cout << n->bs[i] << "|";
+                if((i & 7 )== 7) std::cout << "\t";
+                if((i & 15 )== 15) std::cout << "\n";
+            }
+            std::cout << "\n";
+
+
+        }else{
+
+            std::cout << n << " inner_node \n";
+            // inner_node* inner = static_cast<inner_node*>(n);
+            for(int i = 0; i < hi; i++){
+                std::cout << n->slotkey[i] << ",";
+                std::cout << n->bs[i] << "|";
+                if((i & 7) == 7) std::cout << "\t";
+                if((i & 15) == 15) std::cout << "\n";
+            }
+            std::cout << "\n";
+        }
+
+        std::cout << "\n";
+    }
+
+    template<typename T>
+    void print_node_info_c(const T* n) const{
         int hi = n->slotuse, lo = 0;
         if(n->isleafnode()){
             std::cout << n << " leaf_node \n";
@@ -2648,6 +2758,9 @@ gaps_count[btree_level]++;
 
     // 最小二乘法拟合直线的函数
     void leastSquaresFit(const std::vector<double>& x, const std::vector<double>& y, double& slope, double& intercept) {
+        // for(auto& e : x){
+        //     e = e / 1024;
+        // }
         int n = x.size();
         if (n != static_cast<int>(y.size()) || n == 0) {
             std::cerr << "Error: Invalid input data\n";
@@ -2756,16 +2869,18 @@ gaps_count[btree_level]++;
         // std::cout << fa << " " << fb << "\n";
         errs = (up_sum + down_sum) / (keys[r] - keys[0]);
 
-        if(errs < 32){
+        if(errs < 8){
             /* liner type */
             n->model_type = modelType::LINE;
             n->fk[0] = fa;
             n->fb[0] = fb;
-            // node_type_counts[0]++;
+            data_distribution_count[0]++;
+            // std::cout << "liner\n";
         }
 
-        else if(errs < 96){
-            // 两点式
+        else if(errs < hi/8){
+
+            // // 两点式
             // if(k > k0 && k < k3){
             //     // 小凸 small convex
             //     n->model_type = modelType::LINE;
@@ -2786,9 +2901,148 @@ gaps_count[btree_level]++;
 
             // 最小二乘法
             leastSquaresFit(keys, sites, n->fk[0], n->fb[0]);
+            
+
+            // std::cout << "n->fk[0], n->fb[0] " <<  n->fk[0] << " " << n->fb[0] << "\n";
+            // std::cout << "fa, fb " <<  fa << " " << fb << "\n";
+            data_distribution_count[1]++;
+            n->model_type = modelType::LINE;
+            // if(k > k0 && k < k3){
+            //     // tu 
+            //     // // 两点式
+            //     // if(k > k0 && k < k3){
+            //     //     // 小凸 small convex
+            //     //     n->model_type = modelType::LINE;
+            //     //     n->fk[0] = fa;
+            //     //     n->fb[0] = fb + 0.8*errs;
+
+            //     // }else if(k < k0 && k > k3){
+            //     //     // 小凹 small concave
+            //     //     n->model_type = modelType::LINE;
+            //     //     n->fk[0] = fa;
+            //     //     n->fb[0] = fb - 0.8*errs;
+            //     // }else{
+            //     //     // small S type
+            //     //     n->model_type = modelType::LINE;
+            //     //     n->fk[0] = fa;
+            //     //     n->fb[0] = fb;
+            //     // }
+
+            //     // 最小二乘法
+            //     leastSquaresFit(keys, sites, n->fk[0], n->fb[0]);
+
+            //     // std::cout << "n->fk[0], n->fb[0] " <<  n->fk[0] << " " << n->fb[0] << "\n";
+            //     // std::cout << "fa, fb " <<  fa << " " << fb << "\n";
+            //     data_distribution_count[1]++;
+            //     n->model_type = modelType::LINE;
+
+            // }
+            // else if(k < k0 && k > k3){
+            //     // ao
+            //     // // 两点式
+            //     // if(k > k0 && k < k3){
+            //     //     // 小凸 small convex
+            //     //     n->model_type = modelType::LINE;
+            //     //     n->fk[0] = fa;
+            //     //     n->fb[0] = fb + 0.8*errs;
+
+            //     // }else if(k < k0 && k > k3){
+            //     //     // 小凹 small concave
+            //     //     n->model_type = modelType::LINE;
+            //     //     n->fk[0] = fa;
+            //     //     n->fb[0] = fb - 0.8*errs;
+            //     // }else{
+            //     //     // small S type
+            //     //     n->model_type = modelType::LINE;
+            //     //     n->fk[0] = fa;
+            //     //     n->fb[0] = fb;
+            //     // }
+
+            //     // 最小二乘法
+            //     leastSquaresFit(keys, sites, n->fk[0], n->fb[0]);
+
+            //     // std::cout << "n->fk[0], n->fb[0] " <<  n->fk[0] << " " << n->fb[0] << "\n";
+            //     // std::cout << "fa, fb " <<  fa << " " << fb << "\n";
+            //     data_distribution_count[1]++;
+            //     n->model_type = modelType::LINE;
+
+            // }else{
+            //     std::vector<std::vector<double>> dp(ele_num,std::vector<double>(ele_num,0));
+            //     // dp
+            //     for(int i=0;i<ele_num;i++){
+            //         for(int j=i;j<ele_num;j++){
+            //             dp[i][j] = meaning_distance(ka, kb, keys, sites, i, j);
+            //         }
+            //     }
+            //     // int keys_size = keys.size();
+            //     // for(int i=0;i<keys_size;i++){
+            //     //     std::cout << keys[i] << " ";
+            //     // }
+            //     // std::cout << "\n";
 
 
+            //     double final_k[3] = {0};
+            //     double final_b[3] = {0};
 
+            //     if(k > k0 && k > k3){
+            //         n->model_type = modelType::S1;
+            //         double min = DBL_MAX;
+            //         int sp_site[4] = {0};
+            //         for(int i=1;i<ele_num-2;i++){
+            //             for(int j=i+1;j<ele_num-1;j++){
+            //                 double sum = dp[0][i] + dp[i][j] + dp[j][ele_num-1];
+            //                 if(sum < min){
+            //                     sp_site[0] = 0;
+            //                     sp_site[1] = i;
+            //                     sp_site[2] = j;
+            //                     sp_site[3] = ele_num-1;
+            //                     min = sum;
+            //                 }
+            //                 // std::cout << sum << "\n";
+            //             }
+            //         }
+                    
+            //         // cout_nodeinfo(n);
+            //         for(int i=0;i<3;i++){
+            //             final_k[i] = (sites[sp_site[i+1]] - sites[sp_site[i]]) / (keys[sp_site[i+1]] - keys[sp_site[i]])  ;
+            //             // std::cout << keys[sp_site[i+1]] << "\n";
+            //             final_b[i] = sites[sp_site[i]] - final_k[i] * keys[sp_site[i]];
+
+            //         }
+            //         // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
+            //         data_distribution_count[4]++;
+
+            //     }else{
+            //         n->model_type = modelType::S2;
+            //         double min = DBL_MAX;
+            //         int sp_site[4] = {0};
+            //         for(int i=1;i<ele_num-2;i++){
+            //             for(int j=i+1;j<ele_num-1;j++){
+            //                 double sum = dp[0][i] + dp[i][j] + dp[j][ele_num-1];
+            //                 if(sum < min){
+            //                     sp_site[0] = 0;
+            //                     sp_site[1] = i;
+            //                     sp_site[2] = j;
+            //                     sp_site[3] = ele_num-1;
+            //                     min = sum;
+            //                 }
+            //                 // std::cout << sum << "\n";
+            //             }
+            //         }
+                    
+            //         // cout_nodeinfo(n);
+            //         for(int i=0;i<3;i++){
+            //             final_k[i] = (sites[sp_site[i+1]] - sites[sp_site[i]]) / (keys[sp_site[i+1]] - keys[sp_site[i]])  ;
+            //             // std::cout << keys[sp_site[i+1]] << "\n";
+            //             final_b[i] = sites[sp_site[i]] - final_k[i] * keys[sp_site[i]];
+
+            //         }
+            //         // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
+            //         data_distribution_count[5]++;
+
+            //     }
+
+            // }
 
         }
 
@@ -2833,6 +3087,7 @@ gaps_count[btree_level]++;
 
                 }
                 // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
+                data_distribution_count[2]++;
 
             }else if(k < k0 && k > k3){
                 n->model_type = modelType::AO;
@@ -2857,6 +3112,7 @@ gaps_count[btree_level]++;
 
                 }
                 // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
+                data_distribution_count[3]++;
 
             }else if(k > k0 && k > k3){
                 n->model_type = modelType::S1;
@@ -2884,6 +3140,7 @@ gaps_count[btree_level]++;
 
                 }
                 // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
+                data_distribution_count[4]++;
 
             }else{
                 n->model_type = modelType::S2;
@@ -2911,6 +3168,7 @@ gaps_count[btree_level]++;
 
                 }
                 // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
+                data_distribution_count[5]++;
 
             }
 
@@ -3029,6 +3287,7 @@ public:
     /// key/data slot if found. If unsuccessful it returns end().
     iterator find(const key_type& key)
     {
+        // print_node_info(m_root);
         node* n = m_root;
         if (!n) return end();
         btree_level=0;
@@ -3044,10 +3303,11 @@ public:
         return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot])) ? iterator(leaf, slot) : end();
     }
 
-    
 
     size_t* find_x(const key_type& key)
     {
+        // print_node_info(m_root);
+        // print_inner_node(m_root);
         btree_level = 0;
         node* n = m_root;
         const inner_node* r = static_cast<const inner_node*>(n);
@@ -3060,8 +3320,11 @@ public:
 
             n = inner->childid[slot];
             btree_level++;
+            // std::cout << "leaf slot = " << slot << "\n";
         }
         leaf_node* leaf = static_cast<leaf_node*>(n);
+        // std::cout << "leaf = " << leaf << "\n";
+        // print_node_info(leaf);
         int slot = find_lower_x(leaf, key);
 
         return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
@@ -4156,7 +4419,7 @@ public:
         // calculate number of leaves needed, round up.
         // 计算需要多少个叶子节点
         size_t num_items = iend - ibegin;
-        size_t num_seg = (num_items / segsize) + 1; 
+        size_t num_seg = (num_items / (segsize - 2)) + 1; 
         size_t segmax = leafslotmax / segsize - 2;
         size_t num_leaves = (num_seg + segmax - 1) / segmax;
 

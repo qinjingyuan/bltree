@@ -1250,6 +1250,7 @@ class AlexDataNode : public AlexNode<T, P> {
       const_iterator_type it(node, left);
       LinearModelBuilder<T> builder(&(this->model_));
       for (int i = 0; it.cur_idx_ < right && !it.is_end(); it++, i++) {
+        // std::cout << "i " << i << ", it.key() " << it.key() << ",right " << right << "\n";
         builder.add(it.key(), i);
         num_actual_keys++;
       }

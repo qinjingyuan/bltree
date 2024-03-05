@@ -48,21 +48,36 @@ struct traits_nodebug : stx::btree_default_set_traits<KeyType> {
 
 typedef stx::btree_multimap<size_t, size_t, std::less<size_t>, traits_nodebug<size_t> > btree_type;
 typedef alex::Alex<KEY_TYPE, PAYLOAD_TYPE> alex_type;
-// extern size_t level_delay[4];
+// extern size_t level_delay[4]; 
+// btree alex btree_x
 size_t stat_res[3][3]; 
 
 auto test_btree(std::vector<std::pair<size_t,size_t>> data, 
     int insert_count, int erase_count, int find_count, int times) -> bool{
     btree_type bt;
+    auto t1 = std::chrono::high_resolution_clock::now();
     bt.bulk_load(data.begin(),data.end());
+    // for(auto e : data){
+    //     std::cout << e.first << " " << e.second << "\n";
+    // }
+    std::cout << "data.begin() = " << (*bt.begin()).first << "\n";
+    std::cout << "data.end() = " << (*(bt.end()--)).first << "\n";
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto st1 = std::chrono::duration_cast<std::chrono::nanoseconds>(t1.time_since_epoch()).count();
+    auto st2 = std::chrono::duration_cast<std::chrono::nanoseconds>(t2.time_since_epoch()).count();
+    auto bulk_load_time = (st2 - st1);
+    std::cout << "bulk_load_time = " << bulk_load_time / 1000000 << "\n";
     // for(auto e:bt){
     //     std::cout << e.first << "\t" << e.second << std::endl;
     // }
     // auto res = bt.find(718186352);
     // std::cout << res->first << " " << res->second << "\n";
+    
+    // bt.find(123);
+    
     size_t states[2] = {0};
     for(int i=0;i<times;i++){
-
+        int right_count = 0, error_count = 0;
 
         for(int j=0;j<5;j++){
             stx::gaps[j] = 0;
@@ -97,7 +112,6 @@ auto test_btree(std::vector<std::pair<size_t,size_t>> data,
             erase_times += (nanoseconds2 - nanoseconds1);
         }
         
-
         for(int j = 0; j < find_count; j++){
             int randomInt = intDistribution(gen) % data.size();
             auto ttt =  data[randomInt].first;
@@ -109,38 +123,45 @@ auto test_btree(std::vector<std::pair<size_t,size_t>> data,
             auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
             auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
             find_times += (nanoseconds2 - nanoseconds1);
+
             if(res != bt.end() && data[randomInt].first != res->second){
-                std::cout 
-                << data[randomInt].first  <<"\t"
-                << data[randomInt].second <<"\t"
-                << res->first << "\t" 
-                << res->second << "\t"
-                << std::endl;
+                // std::cout 
+                // << data[randomInt].first  <<"\t"
+                // << data[randomInt].second <<"\t"
+                // << res->first << "\t" 
+                // << res->second << "\t"
+                // << std::endl;
+                error_count++;
+            }else{
+                right_count++;
             }
         }
-
 
         stat_res[0][0] += insert_times / insert_count;
         stat_res[0][1] += erase_times / erase_count;
         stat_res[0][2] += find_times / find_count;
+#ifdef RES
 
-        // std::cout 
-        // << __func__ 
-        // << " insert用时-纳秒:" << insert_times / insert_count 
-        // << " erase用时-纳秒:" << erase_times / erase_count 
-        // << " find用时-纳秒:" << find_times / find_count 
-        // << " 数据量-百万:" << bt.size()/1000000 
-        // <<  "\n";
+        // std::cout << "right_count = " << right_count << ", error_count = " << error_count << "\n";
+
+        std::cout 
+        << __func__ 
+        << " insert用时-纳秒:" << insert_times / insert_count 
+        << " erase用时-纳秒:" << erase_times / erase_count 
+        << " find用时-纳秒:" << find_times / find_count 
+        << " 数据量-万:" << bt.size()/10000 
+        <<  "\n";
+#endif
     }
+
+    
 
     stat_res[0][0] /= times;
     stat_res[0][1] /= times;
     stat_res[0][2] /= times;
-
     return true;
     
 }
-
 
 auto print_sts(size_t sum[5], size_t count[5]){
     for(int i=0;i<5;i++){
@@ -151,25 +172,29 @@ auto print_sts(size_t sum[5], size_t count[5]){
 
 static size_t tmp_num = 0;
 
-
-
 auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,
     int insert_count, int erase_count, int find_count, int times) -> bool{
 
     btree_type bt;
+    auto t1 = std::chrono::high_resolution_clock::now();
     bt.bulk_load_x(data.begin(),data.end());
-    std::cout << "node_type_counts " 
-    << " " << stx::node_type_counts[0]  
-    << " " << stx::node_type_counts[1]  
-    << " " << stx::node_type_counts[2]  
-    << " " << stx::node_type_counts[3]  
-    << " " << stx::node_type_counts[4]
-    << " " << stx::node_type_counts[5]
-    << " " << stx::node_type_counts[6]
-    << "\n";
+    // for(auto e : data){
+    //     std::cout << e.first << " " << e.second << "\n";
+    // }
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto st1 = std::chrono::duration_cast<std::chrono::nanoseconds>(t1.time_since_epoch()).count();
+    auto st2 = std::chrono::duration_cast<std::chrono::nanoseconds>(t2.time_since_epoch()).count();
+    auto bulk_load_time = (st2 - st1);
+    std::cout << "bulk_load_time = " << bulk_load_time / 1000000 << "\n";
+
+    std::cout << "liner sub-liner 凸 凹 S1 S2\n";
+    for(int i = 0; i < 6; i++){
+        std::cout << stx::data_distribution_count[i] << " ";
+    }
+    std::cout << "\n";
 
     // bt.erase_x(505331665);
-
+    // std::cout << "min = " << (*data.begin()).first << ", max = " << (*(data.end()-1)).first << "\n";
 
     size_t states[2] = {0};
     for(int i=0;i<times;i++){
@@ -183,6 +208,7 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,
             stx::load_times[j] = 1;
             stx::load_counts[j] = 1;
         }
+        int right_count = 0, error_count = 0;
 
         uint64_t insert_times = 0;
         uint64_t erase_times = 0;
@@ -190,6 +216,9 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<int> intDistribution(1,data.size());
+        // std::cout << "bt.size() " << bt.size() << "\n";
+        // bt.print();
+        // bt.find_x(123);
 
         for(int j = 0; j < insert_count; j++){
             int randomInt = intDistribution(gen) % data.size();
@@ -221,44 +250,69 @@ auto test_btree_x(std::vector<std::pair<size_t,size_t>> data,
             auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
             auto nanoseconds2 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime2.time_since_epoch()).count();
 
-            if(res){
-                if(data[randomInt].first != *res) 
-                    std::cout << data[randomInt].first <<" "<< *res << std::endl;
+            if(res && data[randomInt].first == *res){
+                right_count++;
+            }else{
+                error_count++;
+                // std::cout << "=================================\n";
+                // std::cout << "data[randomInt].first " << data[randomInt].first << "\n";
+                // std::cout << "res " << res << "\n";
             }
+
+            // if(res){
+            //     if(data[randomInt].first != *res) 
+            //         std::cout << data[randomInt].first <<" "<< *res << std::endl;
+            //     else
+            //         std::cout << "is right\n";
+            // }else{
+            //     std::cout << "res is null\n";
+            //     std::cout << "data[randomInt].first = "  << data[randomInt].first << "\n";
+            // }
 
             find_times += (nanoseconds2 - nanoseconds1);
         }
-
         stat_res[2][0] += insert_times / insert_count;
         stat_res[2][1] += erase_times / erase_count;
         stat_res[2][2] += find_times / find_count;
-
-
+#ifdef RES
+        std::cout << "right_count = " << right_count << ", error_count = " << error_count << "\n";
         std::cout 
         << __func__ 
         << " insert用时-纳秒:" << insert_times / insert_count 
         << " erase用时-纳秒:" << erase_times / erase_count 
         << " find用时-纳秒:" << find_times / find_count 
-        << " 数据量-百万:" << bt.size()/1000000 << " |" ;
+        << " 数据量-万:" << bt.size()/10000 << " |" ;
         print_sts(stx::gaps, stx::gaps_count);
         print_sts(stx::mul_times, stx::mul_counts);
         print_sts(stx::load_times, stx::load_counts);
         std::cout <<  "\n";
+#endif
     }
-
 
     stat_res[2][0] /= times;
     stat_res[2][1] /= times;
     stat_res[2][2] /= times;
 
     return true;
-    
 }
+
 
 auto test_alex(std::vector<std::pair<size_t,size_t>> data, 
     int insert_count, int erase_count, int find_count, int times) -> bool{
     alex_type index;
+
+    for(auto& e : data){
+        e.first = e.first * 4;
+        e.second = e.second * 4;
+    }
+
+    auto t1 = std::chrono::high_resolution_clock::now();
     index.bulk_load(data.data(), data.size());
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto st1 = std::chrono::duration_cast<std::chrono::nanoseconds>(t1.time_since_epoch()).count();
+    auto st2 = std::chrono::duration_cast<std::chrono::nanoseconds>(t2.time_since_epoch()).count();
+    auto bulk_load_time = (st2 - st1);
+    std::cout << "bulk_load_time = " << bulk_load_time / 1000000 << "\n";
     size_t states[2] = {0};
     for(int i=0;i<times;i++){
 
@@ -279,6 +333,7 @@ auto test_alex(std::vector<std::pair<size_t,size_t>> data,
         for(int j = 0; j < insert_count; j++){
             int randomInt = intDistribution(gen)  % data.size();
             auto currentTime1 = std::chrono::high_resolution_clock::now();
+            // std::cout << data[randomInt].first << "\n";
             index.insert(data[randomInt].first,data[randomInt].second);
             auto currentTime2 = std::chrono::high_resolution_clock::now();
             auto nanoseconds1 = std::chrono::duration_cast<std::chrono::nanoseconds>(currentTime1.time_since_epoch()).count();
@@ -314,28 +369,19 @@ auto test_alex(std::vector<std::pair<size_t,size_t>> data,
             }
         }
 
-        stat_res[1][0] += insert_times / insert_count;
-        stat_res[1][1] += erase_times / erase_count;
-        stat_res[1][2] += find_times / find_count;
+        stat_res[1][0] += (insert_times / insert_count);
+        stat_res[1][1] += (erase_times / erase_count);
+        stat_res[1][2] += (find_times / find_count);
 
-
-        // std::cout 
-        // << __func__ 
-        // << " insert用时-纳秒:" << insert_times / insert_count 
-        // << " erase用时-纳秒:" << erase_times / erase_count 
-        // << " find用时-纳秒:" << find_times / find_count 
-        // << " 数据量-百万:" << index.size()/1000000 
-        // << " level0:" << stx::level_delay[0] / find_count  
-        // << " level1:" << stx::level_delay[1] / find_count  
-        // << " level2:" << stx::level_delay[2] / find_count  
-        // << " level3:" << stx::level_delay[3] / find_count  
-        // << " level4:" << stx::level_delay[4] / find_count  
-        // << " gap0:" << stx::gaps[0] / (stx::gaps_count[0]+1   )
-        // << " gap1:" << stx::gaps[1] / (stx::gaps_count[1]+1   )
-        // << " gap2:" << stx::gaps[2] / (stx::gaps_count[2]+1   )
-        // << " gap3:" << stx::gaps[3] / (stx::gaps_count[3]+1   )
-        // << " gap4:" << stx::gaps[4] / (stx::gaps_count[4]+1   )
-        // <<  "\n";
+#ifdef RES
+        std::cout
+        << __func__ 
+        << " insert用时-纳秒:" << (insert_times / insert_count)
+        << " erase用时-纳秒:" << (erase_times / erase_count)
+        << " find用时-纳秒:" << (find_times / find_count)
+        << " 数据量-万:" << index.size()/10000 
+        <<  "\n";
+#endif
     }
 
 
@@ -360,6 +406,9 @@ int main(int argc, char** argv){
 
   std::vector<size_t> keys(init_num_keys,0);
   load_binary_data(keys.data(),init_num_keys,keys_file_path);
+//   for(auto e : keys){
+//     std::cout << e << "\n";
+//   }
 
     std::random_device rd;
     std::mt19937 gen(rd()); // 使用Mersenne Twister引擎
@@ -369,29 +418,37 @@ int main(int argc, char** argv){
         int randomInt = intDistribution(gen);
         keys.push_back(keys[randomInt]);
         // std::cout << "随机整数: " << randomInt << std::endl;
-
     }
 
     std::sort(keys.begin(),keys.end());
+    std::cout << "keys.begin() = " << *keys.begin() << "\n";
+    std::cout << "keys.end() = " << *keys.end() << "\n";
     std::vector<std::pair<size_t,size_t>> data(keys.size());
     for(size_t i=0;i<data.size();i++){
         data[i].first = keys[i];
         data[i].second = keys[i];
     }
 
-    int insert_count = 0;
-    int erase_count  = 0;
+    int erase_count = 0;
+    int insert_count = 16;
+    int find_count = 4;
+    int loop = 20000;
 
-    test_btree_x(data, insert_count, erase_count, 200000, 10);
-    test_alex(   data, insert_count, erase_count, 200000, 10);
-    test_btree(  data, insert_count, erase_count, 200000, 10);
+    test_btree_x(data, insert_count, erase_count, find_count, loop);
+    test_btree(  data, insert_count, erase_count, find_count, loop);
+    test_alex(   data, insert_count, erase_count, find_count, loop);
 
-    std::cout << "insert erase find\n";
-    for(auto& e : stat_res){
-        for(auto& l : e){
+    std::cout << "index insert erase find\n";
+    // btree alex btree_x
+    std::string index_names[] = {"btree", "alex", "btree_x"};
+    for(int i = 0; i < 3; i++){
+        std::cout << index_names[i] << " ";
+
+        for(auto& l : stat_res[i]){
             std::cout << l << " ";
         }
         std::cout << "\n";
+
     }
 
     return 0;
