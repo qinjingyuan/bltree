@@ -54,7 +54,7 @@
 #include <cmath>
 #include <string>
 // *** Debugging Macros
-
+#include <thread>
 // #include <Eigen/Dense>
 #include <vector>
 #include <numeric>
@@ -108,7 +108,7 @@ size_t load_counts[5];
 size_t node_type_counts[7] = {0};
 
 
-enum modelType  {LINE=0,BINOMIAL,GENERAL,X4,SINX001,X2,LINE_X,X3,X2R,X2D,LINE_EXP,GAPX6,GAPX2,GAPX3,LINE_INT,S1,S2,TU,AO,SX,LN};
+enum modelType  {LINE=0, SUBLINE, GENERAL, S1,S2,TU,AO};
 
 
 
@@ -2124,10 +2124,11 @@ private:
             if(n->slotkey[0] > key) return 0;
             if(n->slotkey[hi-1] < key) return hi;
 
-
+            // hi = (hi | 7) + 1;
             while (lo < hi)
             {
                 int mid = (lo + hi) >> 1;
+                // if(mid | 7 != 0) break;
 
                 if (key_lessequal(key, n->slotkey[mid])) {
                     hi = mid;     // key <= mid
@@ -2136,6 +2137,17 @@ private:
                     lo = mid + 1; // key > mid
                 }
             }
+
+            // while(lo < hi){
+
+            //     if(key_less(n->slotkey[lo], key)){
+            //         lo++;
+            //     }else{
+            //         break;
+            //     }
+
+            // }
+
 
             BTREE_PRINT("btree::find_lower: on " << n << " key " << key << " -> " << lo << " / " << hi);
 
@@ -2176,9 +2188,23 @@ private:
 
     }
 
-    template <typename node_type>
-    inline int binary_search(const node_type* n,int lo,int hi,const key_type& key){
 
+    template <typename node_type>
+    inline int find_lower_l(const node_type* n, const key_type& key) const
+    {
+#ifdef LEVEL_COUNT_TIME
+        auto currentTime1 = std::chrono::high_resolution_clock::now();
+#endif
+        // print_node_info_c(n);
+        // if (sizeof(n->slotkey) > traits::binsearch_threshold)
+
+            // std::cout << "zou le bingary \n";
+            // std::cout << traits::binsearch_threshold <<"zou le bingary \n";
+        if (n->slotuse == 0) return 0;
+
+        int lo = 0, hi = n->slotuse;
+        if(n->slotkey[0] > key) return 0;
+        if(n->slotkey[hi-1] < key) return hi;
 
         while (lo < hi)
         {
@@ -2195,6 +2221,82 @@ private:
         return lo;
 
 
+ 
+
+    }
+
+    inline int find_lower_inner(const inner_node* n, const key_type& key) const
+    {
+            if (n->slotuse == 0) return 0;
+            int lo = 0, hi = n->slotuse;
+
+            while (lo < hi)
+            {
+                int mid = (lo + hi) >> 1;
+
+                if (key_lessequal(key, n->slotkey[mid])) {
+                    hi = mid;     // key <= mid
+                }
+                else {
+                    lo = mid + 1; // key > mid
+                }
+            }
+            return lo;
+    }
+
+    inline int find_lower_leaf(const leaf_node* n, const key_type& key) const
+    {
+            if (n->slotuse == 0) return 0;
+            int lo = 0, hi = n->slotuse;
+
+            while (lo < hi)
+            {
+                int mid = (lo + hi) >> 1;
+                // bool tb = n->bs[lo];
+                // __builtin_prefetch(&(n->bs[mid]), 0, 1);
+
+                // if(mid | 7 != 0 ) break;
+                if(!n->bs[mid]) break;
+
+                if (key_lessequal(key, n->slotkey[mid])) {
+                    hi = mid;     // key <= mid
+                }
+                else {
+                    lo = mid + 1; // key > mid
+                }
+            }
+
+            while(lo < hi){
+                if(n->bs[lo]) {
+                    if(key_less(n->slotkey[lo], key)){
+                        lo++;
+                    }else{
+                        break;
+                    }
+                }else{
+                    lo++;
+                }
+            }
+
+            return lo;
+    }
+
+    template <typename node_type>
+    inline int binary_search(const node_type* n,int lo,int hi,const key_type& key){
+
+        while (lo < hi)
+        {
+            int mid = (lo + hi) >> 1;
+
+            if (key_lessequal(key, n->slotkey[mid])) {
+                hi = mid;     // key <= mid
+            }
+            else {
+                lo = mid + 1; // key > mid
+            }
+        }
+
+        return lo;
     }
 
 
@@ -2217,7 +2319,7 @@ private:
     {
 
         if(n->model_type == modelType::GENERAL){
-            return find_lower(n, key);
+            return find_lower_inner(n, key);
         }
 
         if (n->slotuse == 0) return 0;
@@ -2248,6 +2350,22 @@ auto currentTime1 = std::chrono::high_resolution_clock::now();
         case modelType::LINE:
             pre_target = pt0;
             break;
+        case modelType::SUBLINE:
+            pt1 = static_cast<int>(n->fk[1] * static_cast<double>(key) + n->fb[1]);
+            pt0 = std::min(std::max(pt0,lo),hi-1);
+            pt1 = std::min(std::max(pt1,lo),hi-1);
+            if(! n->bs[pt0]){
+                pt0 = (pt0 >> 3) << 3;
+            }
+            if(! n->bs[pt1]){
+                pt1 = (pt1 >> 3) << 3;
+            }
+            if(n->slotkey[pt1] - key > key - n->slotkey[pt0]){
+                pre_target = pt0;
+            }else{
+                pre_target = pt1;
+            }
+            break;
         
         case modelType::S1:
             // small big
@@ -2268,11 +2386,13 @@ auto currentTime1 = std::chrono::high_resolution_clock::now();
         case modelType::AO:
             pt1 = static_cast<int>(n->fk[1] * static_cast<double>(key) + n->fb[1]);
             pre_target = std::max(pt0,pt1);
+            // pre_target = pt0;
             break;
         
         case modelType::TU:
             pt1 = static_cast<int>(n->fk[1] * static_cast<double>(key) + n->fb[1]);
             pre_target = std::min(pt0,pt1);
+            // pre_target = pt0;
             break;
         
         default:
@@ -2334,7 +2454,7 @@ gaps_count[btree_level]++;
 
         if (n->slotuse == 0) return 0;
         if(n->model_type == modelType::GENERAL){
-            return find_lower(n, key);
+            return find_lower_leaf(n, key);
         }
 
         int lo = 0, hi = n->slotuse;
@@ -2362,6 +2482,23 @@ auto currentTime1 = std::chrono::high_resolution_clock::now();
         case modelType::LINE:
             pre_target = pt0;
             break;
+        case modelType::SUBLINE:
+            pt1 = static_cast<int>(n->fk[1] * static_cast<double>(key) + n->fb[1]);
+            pt0 = std::min(std::max(pt0,lo),hi-1);
+            pt1 = std::min(std::max(pt1,lo),hi-1);
+            if(! n->bs[pt0]){
+                pt0 = (pt0 >> 3) << 3;
+            }
+            if(! n->bs[pt1]){
+                pt1 = (pt1 >> 3) << 3;
+            }
+            if(n->slotkey[pt1] - key > key - n->slotkey[pt0]){
+                pre_target = pt0;
+            }else{
+                pre_target = pt1;
+            }
+
+            break;
         
         case modelType::S1:
             // small big
@@ -2382,11 +2519,13 @@ auto currentTime1 = std::chrono::high_resolution_clock::now();
         case modelType::AO:
             pt1 = static_cast<int>(n->fk[1] * static_cast<double>(key) + n->fb[1]);
             pre_target = std::max(pt0,pt1);
+            // pre_target = pt0;
             break;
         
         case modelType::TU:
             pt1 = static_cast<int>(n->fk[1] * static_cast<double>(key) + n->fb[1]);
             pre_target = std::min(pt0,pt1);
+            // pre_target = pt0;
             break;
         
         default:
@@ -2800,29 +2939,40 @@ gaps_count[btree_level]++;
         std::vector<double> ka(ele_num-1);
         std::vector<double> kb(ele_num-1);
 
+
+        // n->insert_count = 0;
+        // n->delete_count = 0;
+        // n->model_type = modelType::LINE;
+        // n->fk[0] = static_cast<double>(hi - lo - 16) / static_cast<double>(n->slotkey[hi - 8] - n->slotkey[lo + 8]);
+        // n->fb[0] = 8 - n->fk[0] * n->slotkey[lo + 8];
+        // return true;
+
         if(hi < 64) {
             n->model_type = modelType::LINE;
-            n->fk[0] = static_cast<double>(hi - lo) / static_cast<double>(n->slotkey[hi] - n->slotkey[lo]);
+            n->model_type = modelType::GENERAL;
+            n->fk[0] = static_cast<double>(hi - lo - 8) / static_cast<double>(n->slotkey[hi - 8] - n->slotkey[lo]);
             n->fb[0] = lo - n->fk[0] * n->slotkey[lo];
             return true;
-        }else if(hi < 128){
-            int x0,x1,x2,x3,x4;
-            x2 = hi >> 1;
-            x1 = hi >> 2;
-            x0 = 0;
-            x4 = hi;
-            x3 = (x2+x4) >> 1;
-            sites = {
-                static_cast<double>(x0), 
-                static_cast<double>(x1), 
-                static_cast<double>(x2), 
-                static_cast<double>(x3), 
-                static_cast<double>(x4)};
-            for(auto &e : sites){
-                keys.push_back(static_cast<double>(n->slotkey[static_cast<int>(e)]));
-            }
+        }
+        // else if(hi < 128){
+        //     int x0,x1,x2,x3,x4;
+        //     x2 = hi >> 1;
+        //     x1 = hi >> 2;
+        //     x0 = 0;
+        //     x4 = hi;
+        //     x3 = (x2+x4) >> 1;
+        //     sites = {
+        //         static_cast<double>(x0), 
+        //         static_cast<double>(x1), 
+        //         static_cast<double>(x2), 
+        //         static_cast<double>(x3), 
+        //         static_cast<double>(x4)};
+        //     for(auto &e : sites){
+        //         keys.push_back(static_cast<double>(n->slotkey[static_cast<int>(e)]));
+        //     }
 
-        }else{
+        // }
+        else{
 
             for(int i=base_site;i<=hi;i+=ele_gap){
                 keys.push_back(static_cast<double>(n->slotkey[i]));
@@ -2869,7 +3019,13 @@ gaps_count[btree_level]++;
         // std::cout << fa << " " << fb << "\n";
         errs = (up_sum + down_sum) / (keys[r] - keys[0]);
 
-        if(errs < 8){
+        n->insert_count = 0;
+        n->delete_count = 0;
+
+        if(errs <= 8){
+            // n->model_type = modelType::GENERAL;
+            // return true;
+
             /* liner type */
             n->model_type = modelType::LINE;
             n->fk[0] = fa;
@@ -2878,7 +3034,9 @@ gaps_count[btree_level]++;
             // std::cout << "liner\n";
         }
 
-        else if(errs < hi/8){
+        else if(errs <= hi/16){
+            // n->model_type = modelType::GENERAL;
+            // return true;
 
             // // 两点式
             // if(k > k0 && k < k3){
@@ -2899,154 +3057,43 @@ gaps_count[btree_level]++;
             //     n->fb[0] = fb;
             // }
 
-            // 最小二乘法
-            leastSquaresFit(keys, sites, n->fk[0], n->fb[0]);
-            
 
-            // std::cout << "n->fk[0], n->fb[0] " <<  n->fk[0] << " " << n->fb[0] << "\n";
-            // std::cout << "fa, fb " <<  fa << " " << fb << "\n";
+            leastSquaresFit(keys, sites, n->fk[0], n->fb[0]);
             data_distribution_count[1]++;
             n->model_type = modelType::LINE;
-            // if(k > k0 && k < k3){
-            //     // tu 
-            //     // // 两点式
-            //     // if(k > k0 && k < k3){
-            //     //     // 小凸 small convex
-            //     //     n->model_type = modelType::LINE;
-            //     //     n->fk[0] = fa;
-            //     //     n->fb[0] = fb + 0.8*errs;
 
-            //     // }else if(k < k0 && k > k3){
-            //     //     // 小凹 small concave
-            //     //     n->model_type = modelType::LINE;
-            //     //     n->fk[0] = fa;
-            //     //     n->fb[0] = fb - 0.8*errs;
-            //     // }else{
-            //     //     // small S type
-            //     //     n->model_type = modelType::LINE;
-            //     //     n->fk[0] = fa;
-            //     //     n->fb[0] = fb;
-            //     // }
-
-            //     // 最小二乘法
-            //     leastSquaresFit(keys, sites, n->fk[0], n->fb[0]);
-
-            //     // std::cout << "n->fk[0], n->fb[0] " <<  n->fk[0] << " " << n->fb[0] << "\n";
-            //     // std::cout << "fa, fb " <<  fa << " " << fb << "\n";
-            //     data_distribution_count[1]++;
-            //     n->model_type = modelType::LINE;
-
-            // }
-            // else if(k < k0 && k > k3){
-            //     // ao
-            //     // // 两点式
-            //     // if(k > k0 && k < k3){
-            //     //     // 小凸 small convex
-            //     //     n->model_type = modelType::LINE;
-            //     //     n->fk[0] = fa;
-            //     //     n->fb[0] = fb + 0.8*errs;
-
-            //     // }else if(k < k0 && k > k3){
-            //     //     // 小凹 small concave
-            //     //     n->model_type = modelType::LINE;
-            //     //     n->fk[0] = fa;
-            //     //     n->fb[0] = fb - 0.8*errs;
-            //     // }else{
-            //     //     // small S type
-            //     //     n->model_type = modelType::LINE;
-            //     //     n->fk[0] = fa;
-            //     //     n->fb[0] = fb;
-            //     // }
-
-            //     // 最小二乘法
-            //     leastSquaresFit(keys, sites, n->fk[0], n->fb[0]);
-
-            //     // std::cout << "n->fk[0], n->fb[0] " <<  n->fk[0] << " " << n->fb[0] << "\n";
-            //     // std::cout << "fa, fb " <<  fa << " " << fb << "\n";
-            //     data_distribution_count[1]++;
-            //     n->model_type = modelType::LINE;
+            // if(errs < 64){
+                // 最小二乘法
+                // leastSquaresFit(keys, sites, n->fk[0], n->fb[0]);
+                // n->fk[1] = n->fk[0] + 8;
+                // n->fb[1] = n->fb[0] + 8;
+                
+                // n->fk[0] = n->fk[0] - 8;
+                // n->fb[0] = n->fb[0] - 8;
+                
+                // std::cout << "n->fk[0], n->fb[0] " <<  n->fk[0] << " " << n->fb[0] << "\n";
+                // std::cout << "fa, fb " <<  fa << " " << fb << "\n";
+                // data_distribution_count[1]++;
+                // n->model_type = modelType::LINE;
 
             // }else{
-            //     std::vector<std::vector<double>> dp(ele_num,std::vector<double>(ele_num,0));
-            //     // dp
-            //     for(int i=0;i<ele_num;i++){
-            //         for(int j=i;j<ele_num;j++){
-            //             dp[i][j] = meaning_distance(ka, kb, keys, sites, i, j);
-            //         }
-            //     }
-            //     // int keys_size = keys.size();
-            //     // for(int i=0;i<keys_size;i++){
-            //     //     std::cout << keys[i] << " ";
-            //     // }
-            //     // std::cout << "\n";
-
-
-            //     double final_k[3] = {0};
-            //     double final_b[3] = {0};
-
-            //     if(k > k0 && k > k3){
-            //         n->model_type = modelType::S1;
-            //         double min = DBL_MAX;
-            //         int sp_site[4] = {0};
-            //         for(int i=1;i<ele_num-2;i++){
-            //             for(int j=i+1;j<ele_num-1;j++){
-            //                 double sum = dp[0][i] + dp[i][j] + dp[j][ele_num-1];
-            //                 if(sum < min){
-            //                     sp_site[0] = 0;
-            //                     sp_site[1] = i;
-            //                     sp_site[2] = j;
-            //                     sp_site[3] = ele_num-1;
-            //                     min = sum;
-            //                 }
-            //                 // std::cout << sum << "\n";
-            //             }
-            //         }
-                    
-            //         // cout_nodeinfo(n);
-            //         for(int i=0;i<3;i++){
-            //             final_k[i] = (sites[sp_site[i+1]] - sites[sp_site[i]]) / (keys[sp_site[i+1]] - keys[sp_site[i]])  ;
-            //             // std::cout << keys[sp_site[i+1]] << "\n";
-            //             final_b[i] = sites[sp_site[i]] - final_k[i] * keys[sp_site[i]];
-
-            //         }
-            //         // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
-            //         data_distribution_count[4]++;
-
-            //     }else{
-            //         n->model_type = modelType::S2;
-            //         double min = DBL_MAX;
-            //         int sp_site[4] = {0};
-            //         for(int i=1;i<ele_num-2;i++){
-            //             for(int j=i+1;j<ele_num-1;j++){
-            //                 double sum = dp[0][i] + dp[i][j] + dp[j][ele_num-1];
-            //                 if(sum < min){
-            //                     sp_site[0] = 0;
-            //                     sp_site[1] = i;
-            //                     sp_site[2] = j;
-            //                     sp_site[3] = ele_num-1;
-            //                     min = sum;
-            //                 }
-            //                 // std::cout << sum << "\n";
-            //             }
-            //         }
-                    
-            //         // cout_nodeinfo(n);
-            //         for(int i=0;i<3;i++){
-            //             final_k[i] = (sites[sp_site[i+1]] - sites[sp_site[i]]) / (keys[sp_site[i+1]] - keys[sp_site[i]])  ;
-            //             // std::cout << keys[sp_site[i+1]] << "\n";
-            //             final_b[i] = sites[sp_site[i]] - final_k[i] * keys[sp_site[i]];
-
-            //         }
-            //         // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
-            //         data_distribution_count[5]++;
-
-            //     }
-
+            //     n->model_type = modelType::GENERAL;
+            //     data_distribution_count[6]++;
             // }
-
+        
         }
-
+        else if(errs <= hi){
+            n->model_type = modelType::GENERAL;
+            return true;
+        }
         else{
+            n->model_type = modelType::GENERAL;
+            return true;
+            // for(auto e : keys){
+            //     std::cout << e << ",";
+            // }
+            // std::cout << "\n";
+
             std::vector<std::vector<double>> dp(ele_num,std::vector<double>(ele_num,0));
             // dp
             for(int i=0;i<ele_num;i++){
@@ -3054,17 +3101,11 @@ gaps_count[btree_level]++;
                     dp[i][j] = meaning_distance(ka, kb, keys, sites, i, j);
                 }
             }
-            // int keys_size = keys.size();
-            // for(int i=0;i<keys_size;i++){
-            //     std::cout << keys[i] << " ";
-            // }
-            // std::cout << "\n";
-
-
             double final_k[3] = {0};
             double final_b[3] = {0};
 
             if(k > k0 && k < k3){
+
                 n->model_type = modelType::TU;
                 double min = DBL_MAX;
                 int sp_site[4] = {0};
@@ -3078,18 +3119,39 @@ gaps_count[btree_level]++;
                     }
                     // std::cout << sum << "\n";
                 }
-                
-                // cout_nodeinfo(n);
-                for(int i=0;i<2;i++){
-                    final_k[i] = (sites[sp_site[i+1]] - sites[sp_site[i]]) / (keys[sp_site[i+1]] - keys[sp_site[i]])  ;
-                    // std::cout << keys[sp_site[i+1]] << "\n";
-                    final_b[i] = sites[sp_site[i]] - final_k[i] * keys[sp_site[i]];
 
+
+
+                // k = (keys[r] - keys[0]) / (sites[r] - sites[0]);
+                // b = keys[0] - k * sites[0];
+
+                // /* computing distance area */
+                // for(int i=0;i<r;i++){
+                //     double up=0,down=0;
+                //     compute_integrate(k, ka[i], b, kb[i], sites[i], sites[i+1], up, down);
+                //     up_sum+=up; down_sum+=down;
+                // }
+
+
+                std::vector<double> keys_tmp;
+                std::vector<double> sites_tmp;
+                for(int i = 0; i < sp_site[1] - 4; i++){
+                    keys_tmp.push_back(keys[i]);
+                    sites_tmp.push_back(sites[i]);
                 }
+                leastSquaresFit(keys_tmp, sites_tmp, final_k[0], final_b[0]);
+
+                // final_k[0] = (sites[sp_site[1]] - sites[sp_site[0]]) / (keys[sp_site[1]] - keys[sp_site[0]])  ;
+                // final_b[0] = sites[sp_site[0]] - final_k[0] * keys[sp_site[0]];
+                
+                final_k[1] = (sites[sp_site[2]] - sites[sp_site[1] + 1]) / (keys[sp_site[2]] - keys[sp_site[1] + 1])  ;
+                final_b[1] = sites[sp_site[1] + 1] - final_k[1] * keys[sp_site[1] + 1];
+
                 // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
                 data_distribution_count[2]++;
 
             }else if(k < k0 && k > k3){
+
                 n->model_type = modelType::AO;
                 double min = DBL_MAX;
                 int sp_site[4] = {0};
@@ -3103,18 +3165,42 @@ gaps_count[btree_level]++;
                     }
                     // std::cout << sum << "\n";
                 }
-                
-                // cout_nodeinfo(n);
-                for(int i=0;i<2;i++){
-                    final_k[i] = (sites[sp_site[i+1]] - sites[sp_site[i]]) / (keys[sp_site[i+1]] - keys[sp_site[i]])  ;
-                    // std::cout << keys[sp_site[i+1]] << "\n";
-                    final_b[i] = sites[sp_site[i]] - final_k[i] * keys[sp_site[i]];
 
+                final_k[0] = (sites[sp_site[1]] - sites[sp_site[0]]) / (keys[sp_site[1]] - keys[sp_site[0]])  ;
+                final_b[0] = sites[sp_site[0]] - final_k[0] * keys[sp_site[0]];
+                
+                std::vector<double> keys_tmp;
+                std::vector<double> sites_tmp;
+                for(int i = sp_site[1] + 4; i < sp_site[2]; i++){
+                    keys_tmp.push_back(keys[i]);
+                    sites_tmp.push_back(sites[i]);
+                    // std::cout << keys[i] << ",";
                 }
-                // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
+                // std::cout << "...\n";
+                leastSquaresFit(keys_tmp, sites_tmp, final_k[1], final_b[1]);
+
+                // cout_nodeinfo(n);
+                // for(int i=0;i<2;i++){
+                //     final_k[i] = (sites[sp_site[i+1]] - sites[sp_site[i]]) / (keys[sp_site[i+1]] - keys[sp_site[i]])  ;
+                //     final_b[i] = sites[sp_site[i]] - final_k[i] * keys[sp_site[i]];
+                // }
+
+                // for(int i = 0; i < sp_site[1] - 1; i++){
+                //     keys_tmp.push_back(keys[i]);
+                //     sites_tmp.push_back(sites[i]);
+                // }
+                // leastSquaresFit(keys_tmp, sites_tmp, final_k[0], final_b[0]);
+
+                // final_k[0] = (sites[sp_site[1]] - sites[sp_site[0]]) / (keys[sp_site[1]] - keys[sp_site[0]])  ;
+                // final_b[0] = sites[sp_site[0]] - final_k[0] * keys[sp_site[0]];
+
+                final_k[1] = (sites[sp_site[2]] - sites[sp_site[1] + 1]) / (keys[sp_site[2]] - keys[sp_site[1] + 1])  ;
+                final_b[1] = sites[sp_site[1] + 1] - final_k[1] * keys[sp_site[1] + 1];
+
                 data_distribution_count[3]++;
 
             }else if(k > k0 && k > k3){
+
                 n->model_type = modelType::S1;
                 double min = DBL_MAX;
                 int sp_site[4] = {0};
@@ -3131,18 +3217,39 @@ gaps_count[btree_level]++;
                         // std::cout << sum << "\n";
                     }
                 }
-                
-                // cout_nodeinfo(n);
-                for(int i=0;i<3;i++){
-                    final_k[i] = (sites[sp_site[i+1]] - sites[sp_site[i]]) / (keys[sp_site[i+1]] - keys[sp_site[i]])  ;
-                    // std::cout << keys[sp_site[i+1]] << "\n";
-                    final_b[i] = sites[sp_site[i]] - final_k[i] * keys[sp_site[i]];
 
+                final_k[1] = (sites[sp_site[2]] - sites[sp_site[1]]) / (keys[sp_site[2]] - keys[sp_site[1]])  ;
+                final_b[1] = sites[sp_site[1]] - final_k[1] * keys[sp_site[1]];
+
+                std::vector<double> keys_tmp;
+                std::vector<double> sites_tmp;
+                for(int i = sp_site[0]; i < sp_site[1]; i++){
+                    keys_tmp.push_back(keys[i]);
+                    sites_tmp.push_back(sites[i]);
                 }
+                leastSquaresFit(keys_tmp, sites_tmp, final_k[0], final_b[0]);
+
+                keys_tmp.clear();
+                sites_tmp.clear();
+                for(int i = sp_site[2]; i < sp_site[3]; i++){
+                    keys_tmp.push_back(keys[i]);
+                    sites_tmp.push_back(sites[i]);
+                }
+                leastSquaresFit(keys_tmp, sites_tmp, final_k[2], final_b[2]);
+
+
+                // cout_nodeinfo(n);
+                // for(int i=0;i<3;i++){
+                //     final_k[i] = (sites[sp_site[i+1]] - sites[sp_site[i]]) / (keys[sp_site[i+1]] - keys[sp_site[i]])  ;
+                //     // std::cout << keys[sp_site[i+1]] << "\n";
+                //     final_b[i] = sites[sp_site[i]] - final_k[i] * keys[sp_site[i]];
+
+                // }
                 // std::cout << final_k[0] << " " << final_k[1] << " " << final_k[2] << "\n";
                 data_distribution_count[4]++;
 
             }else{
+
                 n->model_type = modelType::S2;
                 double min = DBL_MAX;
                 int sp_site[4] = {0};
@@ -3303,15 +3410,33 @@ public:
         return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot])) ? iterator(leaf, slot) : end();
     }
 
+    iterator find_l(const key_type& key)
+    {
+        // print_node_info(m_root);
+        node* n = m_root;
+        if (!n) return end();
+        btree_level=0;
+        while (!n->isleafnode())
+        {
+            const inner_node* inner = static_cast<const inner_node*>(n);
+            int slot = find_lower_l(inner, key);
+            n = inner->childid[slot];
+            btree_level++;
+        }
+        leaf_node* leaf = static_cast<leaf_node*>(n);
+        int slot = find_lower(leaf, key);
+        return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot])) ? iterator(leaf, slot) : end();
+    }
 
-    size_t* find_x(const key_type& key)
+
+    iterator find_x(const key_type& key)
     {
         // print_node_info(m_root);
         // print_inner_node(m_root);
         btree_level = 0;
         node* n = m_root;
         const inner_node* r = static_cast<const inner_node*>(n);
-        if (!n) return nullptr;
+        if (!n) return end();
 
         while (!n->isleafnode())
         {
@@ -3326,9 +3451,10 @@ public:
         // std::cout << "leaf = " << leaf << "\n";
         // print_node_info(leaf);
         int slot = find_lower_x(leaf, key);
+        return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot])) ? iterator(leaf, slot) : end();
 
-        return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
-               ? &(leaf->slotdata[slot]) : nullptr;
+        // return (slot < leaf->slotuse && key_equal(key, leaf->slotkey[slot]))
+        //        ? &(leaf->slotdata[slot]) : nullptr;
     }
 
     /// Tries to locate a key in the B+ tree and returns an constant iterator
@@ -3950,8 +4076,6 @@ private:
                                              const key_type& key, const data_type& value,
                                              key_type* splitkey, node** splitnode)
     {
-        
-
         if (!n->isleafnode())
         {
             inner_node* inner = static_cast<inner_node*>(n);
@@ -4040,7 +4164,7 @@ private:
                 inner->slotuse++;
             }
 
-            if(inner->insert_count > 10 ){
+            if(inner->insert_count > 8 ){
                 retrain(inner);
             }
 
@@ -4062,6 +4186,11 @@ private:
             if (leaf->isfull())
             {
                 split_leaf_node_x(leaf, splitkey, splitnode);
+                // std::thread th1([this, leaf](){this->retrain(leaf);});
+                // th1.detach();
+                // std::thread th2([this, static_cast<leaf_node*>(*splitnode)](){this->retrain(static_cast<leaf_node*>(*splitnode));});
+                // th2.detach();
+                // std::thread th2([this, static_cast<leaf_node*>(*splitnode)](){this->retrain(leaf);} );
                 retrain(leaf);
                 retrain(static_cast<leaf_node*>(*splitnode));
 #ifdef GAP_TEST
@@ -4089,10 +4218,15 @@ private:
 
             /* 重要插入逻辑 */
             int next_gap = slot;
-            int next_seg_site = (slot | 7) + 1;
-            // 寻找下一个空隙
-            while(next_gap < std::min(next_seg_site + 16, leafslotmax + 0 ) && leaf->bs[next_gap] == true){
-                next_gap++;
+            int next_seg_site = std::min((slot | 7) + 1 + 24, static_cast<int>(leaf->slotuse));
+            if(slot == leaf->slotuse){
+                next_gap = leaf->slotuse;
+                next_seg_site = leaf->slotuse;
+            }else{
+                // 寻找下一个空隙
+                while(next_gap < next_seg_site && leaf->bs[next_gap] == true){
+                    next_gap++;
+                }
             }
 
             // std::cout << "next_gap = " << next_gap << 
@@ -4100,13 +4234,19 @@ private:
             // " slot = " << slot << "\n";
             // std::cout << "__LINE__ = " << __LINE__ << "\n";
 
+            // std::cout << "begin \n";
+            // std::cout << slot << " "<< next_gap << " " << next_seg_site << " " << leaf->slotuse << "\n" << std::flush;
+            // std::cout << leaf->slotkey[slot-1] << " "<< leaf->slotkey[slot] << " " << leaf->slotkey[slot+1] << " " << leaf->slotuse << "\n" << std::flush;
 
             if(next_gap == next_seg_site){
                 // seg中没有空隙了
-                std::copy_backward(leaf->slotkey + next_seg_site, leaf->slotkey + leaf->slotuse, leaf->slotkey + leaf->slotuse + 8);
-                data_copy_backward(leaf->slotdata + next_seg_site, leaf->slotdata + leaf->slotuse, leaf->slotdata + leaf->slotuse + 8);
-                bit_copy_backward(leaf->bs, next_seg_site, leaf->slotuse, leaf->slotuse + 8);
-                bit_set(leaf->bs, next_seg_site, next_seg_site + 8, false);
+                // std::cout << "no gap ...............................................\n" << std::flush;
+                // if(next_seg_site != leafslotmax - 8){
+                    std::copy_backward(leaf->slotkey + next_seg_site, leaf->slotkey + leaf->slotuse, leaf->slotkey + leaf->slotuse + 8);
+                    data_copy_backward(leaf->slotdata + next_seg_site, leaf->slotdata + leaf->slotuse, leaf->slotdata + leaf->slotuse + 8);
+                    bit_copy_backward(leaf->bs, next_seg_site, leaf->slotuse, leaf->slotuse + 8);
+                    bit_set(leaf->bs, next_seg_site, next_seg_site + 8, false);
+                // }
 
                 std::copy_backward(leaf->slotkey + slot, leaf->slotkey + next_seg_site, leaf->slotkey + next_seg_site + 1);
                 data_copy_backward(leaf->slotdata + slot, leaf->slotdata + next_seg_site, leaf->slotdata + next_seg_site + 1);
@@ -4127,6 +4267,7 @@ private:
                 leaf->slotusevalid++;
             }else{
                 // seg中存在空隙
+                // std::cout << "have gap ...............................................\n" << std::flush;
                 std::copy_backward(leaf->slotkey + slot, leaf->slotkey + next_gap, leaf->slotkey + next_gap + 1);
                 data_copy_backward(leaf->slotdata + slot, leaf->slotdata + next_gap, leaf->slotdata + next_gap + 1);
                 bit_copy_backward(leaf->bs, slot, next_gap, next_gap + 1);
@@ -4138,12 +4279,16 @@ private:
                 leaf->slotusevalid++;
             }
 
+
+            // std::cout << "end ...............................................\n" << std::flush;
+
             // 移动量到达阈值，重新训练
-            if(leaf->pre_errors > leaf->slotuse * 2){
+            if(leaf->pre_errors > leaf->slotuse * 4){
                 retrain(leaf);
+                leaf->pre_errors = 0;
             }
 
-
+            // std::cout << "end train ...............................................\n" << std::flush;
 
 #ifdef GAP_TEST
             print_node_info(leaf);
@@ -4185,6 +4330,8 @@ private:
         else {
             newleaf->nextleaf->prevleaf = newleaf;
         }
+        
+        // std::cout << "leaf split\n";
 
         std::copy(leaf->slotkey + mid, leaf->slotkey + leaf->slotuse,
                   newleaf->slotkey);
@@ -4225,12 +4372,101 @@ private:
                   newleaf->slotkey);
         data_copy(leaf->slotdata + mid, leaf->slotdata + leaf->slotuse,
                   newleaf->slotdata);
-        bit2_copy(leaf->bs, mid, leaf->slotuse, newleaf->bs, 0);
+        newleaf->bs = leaf->bs >> mid;
+        // bit2_copy(leaf->bs, mid, leaf->slotuse, newleaf->bs, 0);
 
         leaf->slotuse = mid;
         leaf->slotusevalid -= newleaf->slotusevalid;
         leaf->nextleaf = newleaf;
         newleaf->prevleaf = leaf;
+
+        // std::cout << "begin regap...\n" << std::flush;
+        int vn = 0;
+        int end = leafslotmax - 8;
+        // print_node_info(leaf);
+
+        // std::cout << "leaf split x\n";
+
+        // for(int i = leaf->slotuse / 8 - 1; i >= 0; i--){
+        //     vn = 0;
+        //     for(int j = 7; j >= 0; j--){
+        //         if(leaf->bs[i * 8 + j]) {
+        //             vn++;
+        //         }
+        //     }
+
+        //     assert(end >= 0 && end > i * 8);
+
+        //     if(vn > 6){
+        //         // std::copy(leaf->slotkey + i * 8, leaf->slotkey + i * 8 + 8, leaf->slotkey + end);
+        //         // data_copy(leaf->slotdata + i * 8, leaf->slotdata + i * 8 + 8, leaf->slotdata + end);
+        //         // bit_copy(leaf->bs, i * 8, i * 8 + 8, end);
+        //         // end -= 8;
+        //         std::copy(leaf->slotkey + i * 8 + 4, leaf->slotkey + i * 8 + 8, leaf->slotkey + end);
+        //         data_copy(leaf->slotdata + i * 8 + 4, leaf->slotdata + i * 8 + 8, leaf->slotdata + end);
+        //         bit_copy(leaf->bs, i * 8 + 4, i * 8 + 8, end);
+        //         bit_set(leaf->bs, end + 4, end + 8, false);
+        //         end -= 8;
+        //         std::copy(leaf->slotkey + i * 8, leaf->slotkey + i * 8 + 4, leaf->slotkey + end);
+        //         data_copy(leaf->slotdata + i * 8, leaf->slotdata + i * 8 + 4, leaf->slotdata + end);
+        //         bit_copy(leaf->bs, i * 8, i * 8 + 4, end);
+        //         bit_set(leaf->bs, end + 4, end + 8, false);
+        //         end -= 8;
+        //     }else{
+        //         std::copy(leaf->slotkey + i * 8, leaf->slotkey + i * 8 + 8, leaf->slotkey + end);
+        //         data_copy(leaf->slotdata + i * 8, leaf->slotdata + i * 8 + 8, leaf->slotdata + end);
+        //         bit_copy(leaf->bs, i * 8, i * 8 + 8, end);
+        //         end -= 8;
+        //     }
+        // }
+        // std::copy(leaf->slotkey + end + 8, leaf->slotkey + leafslotmax, leaf->slotkey);
+        // data_copy(leaf->slotdata + end + 8, leaf->slotdata + leafslotmax, leaf->slotdata);
+        // bit_copy(leaf->bs, end + 8, leafslotmax, 0);
+        // leaf->slotuse = leafslotmax - end - 8;
+
+        // // leaf->bs >>= (end + 8);
+
+        // // print_node_info(leaf);
+
+        // end = leafslotmax - 8;
+        // for(int i = newleaf->slotuse / 8 - 1; i >= 0; i--){
+        //     vn = 0;
+        //     for(int j = 7; j >= 0; j--){
+        //         if(newleaf->bs[i * 8 + j]) {
+        //             vn++;
+        //         }
+        //     }
+
+        //     assert(end >= 0);
+
+        //     if(vn == 8){
+        //         std::copy(newleaf->slotkey + i * 8 + 4, newleaf->slotkey + i * 8 + 8, newleaf->slotkey + end);
+        //         data_copy(newleaf->slotdata + i * 8 + 4, newleaf->slotdata + i * 8 + 8, newleaf->slotdata + end);
+        //         bit_copy(newleaf->bs, i * 8 + 4, i * 8 + 8, end);
+        //         bit_set(leaf->bs, end + 4, end + 8, false);
+        //         end -= 8;
+        //         std::copy(newleaf->slotkey + i * 8, newleaf->slotkey + i * 8 + 4, newleaf->slotkey + end);
+        //         data_copy(newleaf->slotdata + i * 8, newleaf->slotdata + i * 8 + 4, newleaf->slotdata + end);
+        //         bit_copy(newleaf->bs, i * 8, i * 8 + 4, end);
+        //         bit_set(leaf->bs, end + 4, end + 8, false);
+        //         end -= 8;
+        //     }else{
+        //         std::copy(newleaf->slotkey + i * 8, newleaf->slotkey + i * 8 + 8, newleaf->slotkey + end);
+        //         data_copy(newleaf->slotdata + i * 8, newleaf->slotdata + i * 8 + 8, newleaf->slotdata + end);
+        //         bit_copy(newleaf->bs, i * 8, i * 8 + 8, end);
+        //         end -= 8;
+        //     }
+        // }
+        // newleaf->slotuse = leafslotmax - end - 8;
+        // std::copy(newleaf->slotkey + end + 8, newleaf->slotkey + leafslotmax, newleaf->slotkey);
+        // data_copy(newleaf->slotdata + end + 8, newleaf->slotdata + leafslotmax, newleaf->slotdata);
+        // bit_copy(newleaf->bs, end + 8, leafslotmax, 0);
+
+
+        // // newleaf->bs >>= (end + 8);
+        // // std::cout << "end regap...\n" << std::flush;
+        leaf->model_type = modelType::GENERAL;
+        newleaf->model_type = modelType::GENERAL;
 
         *_newkey = leaf->slotkey[fun_last_ele_site(leaf)];
         *_newleaf = newleaf;
@@ -4286,7 +4522,7 @@ public:
 
         // calculate number of leaves needed, round up.
         size_t num_items = iend - ibegin;
-        size_t num_leaves = (num_items + leafslotmax - 1) / leafslotmax;
+        size_t num_leaves = (num_items + leafslotmax - 1) / (leafslotmax);
 
         BTREE_PRINT("btree::bulk_load, level 0: " << m_stats.itemcount << " items into " << num_leaves << " leaves with up to " << ((iend - ibegin + num_leaves - 1) / num_leaves) << " items per leaf.");
 
@@ -4396,6 +4632,140 @@ public:
 
                 ++inner_index;
                 num_children -= n->slotuse + 1;
+            }
+
+            BTREE_ASSERT(num_children == 0);
+        }
+
+        m_root = nextlevel[0].first;
+        delete[] nextlevel;
+
+        if (selfverify) verify();
+    }
+
+    template <typename Iterator>
+    void bulk_load_l(Iterator ibegin, Iterator iend)
+    {
+        BTREE_ASSERT(empty());
+
+        m_stats.itemcount = iend - ibegin;
+
+        // calculate number of leaves needed, round up.
+        size_t num_items = iend - ibegin;
+        size_t num_leaves = (num_items + leafslotmax - 1) / leafslotmax;
+
+        BTREE_PRINT("btree::bulk_load, level 0: " << m_stats.itemcount << " items into " << num_leaves << " leaves with up to " << ((iend - ibegin + num_leaves - 1) / num_leaves) << " items per leaf.");
+
+        Iterator it = ibegin;
+        for (size_t i = 0; i < num_leaves; ++i)
+        {
+            // allocate new leaf node
+            leaf_node* leaf = allocate_leaf();
+
+            // copy keys or (key,value) pairs into leaf nodes, uses template
+            // switch leaf->set_slot().
+            leaf->slotuse = static_cast<int>(num_items / (num_leaves - i));
+            for (size_t s = 0; s < leaf->slotuse; ++s, ++it)
+                leaf->set_slot(s, *it);
+
+            if (m_tailleaf != NULL) {
+                m_tailleaf->nextleaf = leaf;
+                leaf->prevleaf = m_tailleaf;
+            }
+            else {
+                m_headleaf = leaf;
+            }
+            m_tailleaf = leaf;
+
+            num_items -= leaf->slotuse;
+
+            retrain(leaf);
+        }
+
+        BTREE_ASSERT(it == iend && num_items == 0);
+
+        // if the btree is so small to fit into one leaf, then we're done.
+        if (m_headleaf == m_tailleaf) {
+            m_root = m_headleaf;
+            return;
+        }
+
+        BTREE_ASSERT(m_stats.leaves == num_leaves);
+
+        // create first level of inner nodes, pointing to the leaves.
+        size_t num_parents = (num_leaves + (innerslotmax + 1) - 1) / (innerslotmax + 1);
+
+        BTREE_PRINT("btree::bulk_load, level 1: " << num_leaves << " leaves in " << num_parents << " inner nodes with up to " << ((num_leaves + num_parents - 1) / num_parents) << " leaves per inner node.");
+
+        // save inner nodes and maxkey for next level.
+        typedef std::pair<inner_node*, const key_type*> nextlevel_type;
+        nextlevel_type* nextlevel = new nextlevel_type[num_parents];
+
+        leaf_node* leaf = m_headleaf;
+        for (size_t i = 0; i < num_parents; ++i)
+        {
+            // allocate new inner node at level 1
+            inner_node* n = allocate_inner(1);
+
+            n->slotuse = static_cast<int>(num_leaves / (num_parents - i));
+            BTREE_ASSERT(n->slotuse > 0);
+            --n->slotuse; // this counts keys, but an inner node has keys+1 children.
+
+            // copy last key from each leaf and set child
+            for (unsigned short s = 0; s < n->slotuse; ++s)
+            {
+                n->slotkey[s] = leaf->slotkey[leaf->slotuse - 1];
+                n->childid[s] = leaf;
+                leaf = leaf->nextleaf;
+            }
+            n->childid[n->slotuse] = leaf;
+
+            // track max key of any descendant.
+            nextlevel[i].first = n;
+            nextlevel[i].second = &leaf->slotkey[leaf->slotuse - 1];
+
+            leaf = leaf->nextleaf;
+            num_leaves -= n->slotuse + 1;
+            retrain(n);
+        }
+
+        BTREE_ASSERT(leaf == NULL && num_leaves == 0);
+
+        // recursively build inner nodes pointing to inner nodes.
+        for (int level = 2; num_parents != 1; ++level)
+        {
+            size_t num_children = num_parents;
+            num_parents = (num_children + (innerslotmax + 1) - 1) / (innerslotmax + 1);
+
+            BTREE_PRINT("btree::bulk_load, level " << level << ": " << num_children << " children in " << num_parents << " inner nodes with up to " << ((num_children + num_parents - 1) / num_parents) << " children per inner node.");
+
+            size_t inner_index = 0;
+            for (size_t i = 0; i < num_parents; ++i)
+            {
+                // allocate new inner node at level
+                inner_node* n = allocate_inner(level);
+
+                n->slotuse = static_cast<int>(num_children / (num_parents - i));
+                BTREE_ASSERT(n->slotuse > 0);
+                --n->slotuse; // this counts keys, but an inner node has keys+1 children.
+
+                // copy children and maxkeys from nextlevel
+                for (unsigned short s = 0; s < n->slotuse; ++s)
+                {
+                    n->slotkey[s] = *nextlevel[inner_index].second;
+                    n->childid[s] = nextlevel[inner_index].first;
+                    ++inner_index;
+                }
+                n->childid[n->slotuse] = nextlevel[inner_index].first;
+
+                // reuse nextlevel array for parents, because we can overwrite
+                // slots we've already consumed.
+                nextlevel[i].first = n;
+                nextlevel[i].second = nextlevel[inner_index].second;
+
+                ++inner_index;
+                num_children -= n->slotuse + 1;
+                retrain(n);
             }
 
             BTREE_ASSERT(num_children == 0);
@@ -5073,6 +5443,7 @@ private:
             // 移动量到达阈值，重新训练
             if(std::abs(leaf->pre_errors) > leaf->slotuse * 2){
                 retrain(leaf);
+                leaf->pre_errors = 0;
             }
 
 

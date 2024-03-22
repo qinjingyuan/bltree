@@ -344,7 +344,7 @@ public:
         return tree.find(key);
     }
 
-    size_t* find_x(const key_type& key)
+    iterator find_x(const key_type& key)
     {
         return tree.find_x(key);
     }
